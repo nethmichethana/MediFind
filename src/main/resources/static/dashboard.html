@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediFind Management Console</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- Demo Role Switcher Toolbar -->
+    <div class="demo-bar animate-fade">
+        <div class="demo-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+            </svg>
+            <span>MediFind Role Tester</span>
+        </div>
+        <div class="demo-roles">
+            <button class="role-tab active" data-role="ADMIN" onclick="switchRole('ADMIN')">System Admin</button>
+            <button class="role-tab" data-role="PHARMACY_ADMIN" onclick="switchRole('PHARMACY_ADMIN')">Pharmacy Admin</button>
+            <button class="role-tab" data-role="PHARMACY_STAFF" onclick="switchRole('PHARMACY_STAFF')">Dispensing Staff</button>
+        </div>
+        <div>
+            <a href="index.html" class="btn btn-outline" style="padding: 0.35rem 0.85rem; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg> Exit to Portal
+            </a>
+        </div>
+    </div>
+
+    <!-- Layout Grid -->
+    <div class="dash-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="dash-sidebar animate-fade">
+            <div>
+                <h3 class="sidebar-title" id="sidebar-role-title">System Admin</h3>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.5rem;" id="sidebar-role-desc">Main platform controls</p>
+                <ul class="sidebar-menu" id="sidebar-menu-list">
+                    <!-- Sidebar items injected dynamically based on role -->
+                </ul>
+            </div>
+            
+            <div style="margin-top: auto; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></div>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);" id="active-user-status">Logged in: Admin</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="dash-content animate-fade">
+            <!-- Header area -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div>
+                    <h1 id="workspace-title" style="font-size: 2.2rem; font-weight: 800;">Management Workspace</h1>
+                    <p id="workspace-desc" style="color: var(--text-secondary); font-size: 0.95rem;">Review analytics and configure core parameters.</p>
+                </div>
+                <div id="workspace-actions">
+                    <!-- Action buttons injected dynamically -->
+                </div>
+            </div>
+
+            <!-- Dashboard Analytics Widgets (Stats) -->
+            <div class="grid-stats" id="workspace-stats">
+                <!-- Stat widgets injected dynamically -->
+            </div>
+
+            <!-- Central Data Section -->
+            <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+                <div id="workspace-table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="font-size: 1.2rem;" id="table-panel-title">Data Records</h3>
+                    <div id="table-panel-filters" style="display: flex; gap: 10px;">
+                        <!-- Inline search or filter drops -->
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="workspace-table">
+                        <thead id="workspace-table-head">
+                            <!-- Table headers dynamic -->
+                        </thead>
+                        <tbody id="workspace-table-body">
+                            <!-- Table body dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- DYNAMIC FORM MODALS -->
+    <!-- Modal: Category CRUD -->
+    <div class="modal-backdrop" id="category-modal">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <h2 id="category-modal-title">Create Medicine Category</h2>
+                <button class="close-btn" onclick="closeModal('category-modal')">&times;</button>
+            </div>
+            <input type="hidden" id="category-edit-id">
+            <div class="form-group">
+                <label class="form-label" for="category-name">Category Name</label>
+                <input type="text" class="form-control" id="category-name" placeholder="e.g. Analgesics">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="category-desc">Description</label>
+                <textarea class="form-control" id="category-desc" rows="3" placeholder="Provide category purpose..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('category-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCategory()">Save Category</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Pharmacy Registration -->
+    <div class="modal-backdrop" id="pharmacy-modal">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <h2>Register Pharmacy Corporation</h2>
+                <button class="close-btn" onclick="closeModal('pharmacy-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="pharmacy-name">Pharmacy Corporate Name</label>
+                <input type="text" class="form-control" id="pharmacy-name" placeholder="e.g. MediFind Health PLC">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="pharmacy-reg">Registration Number</label>
+                <input type="text" class="form-control" id="pharmacy-reg" placeholder="PH-10029-SL">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="pharmacy-phone">Contact Phone</label>
+                <input type="text" class="form-control" id="pharmacy-phone" placeholder="0115566778">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="pharmacy-email">Official Corporate Email</label>
+                <input type="email" class="form-control" id="pharmacy-email" placeholder="hq@corporate.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="pharmacy-owner">Assign Owner User Account</label>
+                <select class="form-control" id="pharmacy-owner">
+                    <!-- User list dynamic -->
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('pharmacy-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="savePharmacy()">Register Corporation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Branch CRUD -->
+    <div class="modal-backdrop" id="branch-modal">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <h2 id="branch-modal-title">Create Pharmacy Branch</h2>
+                <button class="close-btn" onclick="closeModal('branch-modal')">&times;</button>
+            </div>
+            <input type="hidden" id="branch-edit-id">
+            <div class="form-group">
+                <label class="form-label" for="branch-name">Branch Outlet Name</label>
+                <input type="text" class="form-control" id="branch-name" placeholder="e.g. Colombo Town Center Branch">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="branch-address">Address Location</label>
+                <input type="text" class="form-control" id="branch-address" placeholder="12 Union Place">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="branch-city">City</label>
+                <input type="text" class="form-control" id="branch-city" placeholder="Colombo">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="branch-phone">Branch Direct Phone</label>
+                <input type="text" class="form-control" id="branch-phone" placeholder="0119876541">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="branch-email">Branch Email</label>
+                <input type="email" class="form-control" id="branch-email" placeholder="towncenter@medifind.com">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('branch-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveBranch()">Save Branch</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Batch CRUD -->
+    <div class="modal-backdrop" id="batch-modal">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <h2 id="batch-modal-title">Register Medicine Import Batch</h2>
+                <button class="close-btn" onclick="closeModal('batch-modal')">&times;</button>
+            </div>
+            <input type="hidden" id="batch-edit-id">
+            <div class="form-group">
+                <label class="form-label" for="batch-medicine">Target Medicine Catalog Item</label>
+                <select class="form-control" id="batch-medicine">
+                    <!-- Dynamic medicine template list -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="batch-num">Batch Number (Unique Identifier)</label>
+                <input type="text" class="form-control" id="batch-num" placeholder="e.g. BAT-AMX-99">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="batch-price">Unit Price (LKR)</label>
+                <input type="number" step="0.01" class="form-control" id="batch-price" placeholder="45.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="batch-qty">Batch Intake Quantity</label>
+                <input type="number" class="form-control" id="batch-qty" placeholder="1000">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label class="form-label" for="batch-mfg">Manufacture Date</label>
+                    <input type="date" class="form-control" id="batch-mfg">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="batch-exp">Expiry Date</label>
+                    <input type="date" class="form-control" id="batch-exp">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('batch-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveBatch()">Add Batch</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Inventory Reorder Levels -->
+    <div class="modal-backdrop" id="inventory-modal">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <h2>Configure Stock Settings</h2>
+                <button class="close-btn" onclick="closeModal('inventory-modal')">&times;</button>
+            </div>
+            <input type="hidden" id="inventory-edit-id">
+            <div class="form-group">
+                <label class="form-label" for="inventory-med-name">Medicine / Batch Item</label>
+                <input type="text" class="form-control" id="inventory-med-name" readonly style="background: rgba(0,0,0,0.2);">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="inventory-qty">Current Physical Quantity</label>
+                <input type="number" class="form-control" id="inventory-qty">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="inventory-reorder">Low Stock Reorder Threshold</label>
+                <input type="number" class="form-control" id="inventory-reorder">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('inventory-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveInventory()">Update stock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Process Reservation Staff Panel -->
+    <div class="modal-backdrop" id="reservation-process-modal">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <h2>Dispense / Process Reservation</h2>
+                <button class="close-btn" onclick="closeModal('reservation-process-modal')">&times;</button>
+            </div>
+            <input type="hidden" id="process-res-id">
+            <div class="glass-card" style="padding: 1rem; background: rgba(0,0,0,0.25); margin-bottom: 1.5rem;">
+                <div style="margin-bottom: 8px;"><strong>Customer:</strong> <span id="process-res-user">John Customer</span></div>
+                <div style="margin-bottom: 8px;"><strong>Reserved Items:</strong> <span id="process-res-items">Amoxicillin x20</span></div>
+                <div><strong>Client Notes:</strong> <small id="process-res-notes" style="color: var(--text-secondary);">Bring slip</small></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="process-status">Action State</label>
+                <select class="form-control" id="process-status">
+                    <option value="PENDING">Pending (Verification)</option>
+                    <option value="PREPARED">Prepared (Ready in Dispensing cabinet)</option>
+                    <option value="COMPLETED">Completed (Picked Up & Paid)</option>
+                    <option value="CANCELLED">Cancelled (Out of stock / Invalid Rx)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="process-feedback">Internal Staff Note / Dispensing Comments</label>
+                <textarea class="form-control" id="process-feedback" rows="2" placeholder="e.g. Verified Rx copy. Shelf position: D-23."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('reservation-process-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveReservationStatus()">Apply Status</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Controller Logic -->
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

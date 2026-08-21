@@ -1,0 +1,11 @@
+/**
+ * Created by AiChatService
+ * Date : 8/13/2026
+ * Time : 6:23 PM
+ * Project Name : MediFind
+ */
+
+package com.ijse.MediFind.service;
+
+public interface AiChatService {
+}
