@@ -73,6 +73,13 @@ public class ReservationController {
         );
     }
 
+    @DeleteMapping("/reservations/{id}")
+    public CommonResponse deleteReservation(@PathVariable Long id) {reservationService.deleteReservation(id);
 
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                SUCCESS_MESSAGE
+        );
+    }
 
 }
