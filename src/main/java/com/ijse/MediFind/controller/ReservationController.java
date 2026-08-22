@@ -7,10 +7,7 @@ import com.ijse.MediFind.dto.response.ReservationResDTO;
 import com.ijse.MediFind.entity.Reservation;
 import com.ijse.MediFind.service.ReservationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
@@ -30,6 +27,20 @@ public class ReservationController {
                 reservationService.createReservation(
                         reservationReqDTO
                 );
+
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                reservation,
+                SUCCESS_MESSAGE
+        );
+    }
+
+    @GetMapping("/reservations/{id}")
+    public CommonResponse getReservationById(
+            @PathVariable Long id) {
+
+        ReservationResDTO reservation =
+                reservationService.getReservationById(id);
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
