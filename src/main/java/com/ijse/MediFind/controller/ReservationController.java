@@ -38,11 +38,9 @@ public class ReservationController {
     }
 
     @GetMapping("/reservations/{id}")
-    public CommonResponse getReservationById(
-            @PathVariable Long id) {
+    public CommonResponse getReservationById(@PathVariable Long id) {
 
-        ReservationResDTO reservation =
-                reservationService.getReservationById(id);
+        ReservationResDTO reservation = reservationService.getReservationById(id);
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
@@ -54,8 +52,7 @@ public class ReservationController {
     @GetMapping("/reservations")
     public CommonResponse getAllReservations() {
 
-        List<ReservationResDTO> reservationList =
-                reservationService.getAllReservations();
+        List<ReservationResDTO> reservationList = reservationService.getAllReservations();
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
@@ -63,6 +60,19 @@ public class ReservationController {
                 SUCCESS_MESSAGE
         );
     }
+
+    @PutMapping("/reservations/{id}")
+    public CommonResponse updateReservation(@PathVariable Long id, @RequestBody ReservationReqDTO reservationReqDTO) {
+
+        ReservationResDTO reservation = reservationService.updateReservation(id, reservationReqDTO);
+
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                reservation,
+                SUCCESS_MESSAGE
+        );
+    }
+
 
 
 }
