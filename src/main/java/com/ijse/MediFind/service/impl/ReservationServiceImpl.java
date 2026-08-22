@@ -71,7 +71,25 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public ReservationResDTO getReservationById(Long id) {
-        return null;
+        Reservation reservation =
+                reservationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Reservation not found with id: " + id
+                                )
+                        );
+
+        return ReservationResDTO.builder()
+                .id(reservation.getId())
+                .reservationDate(reservation.getReservationDate())
+                .pickupDate(reservation.getPickupDate())
+                .status(reservation.getStatus())
+                .notes(reservation.getNotes())
+                .userId(reservation.getUser().getId())
+                .pharmacyBranchId(
+                        reservation.getPharmacyBranch().getId()
+                )
+                .build();
     }
 
     @Override
