@@ -94,7 +94,19 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public List<ReservationResDTO> getAllReservations() {
-        return List.of();
+        return reservationRepository.findAll()
+                .stream()
+                .map(reservation -> ReservationResDTO.builder()
+                        .id(reservation.getId())
+                        .reservationDate(reservation.getReservationDate())
+                        .pickupDate(reservation.getPickupDate())
+                        .status(reservation.getStatus())
+                        .notes(reservation.getNotes())
+                        .userId(reservation.getUser().getId())
+                        .pharmacyBranchId(reservation.getPharmacyBranch().getId())
+                        .build()
+                )
+                .toList();
     }
 
     @Override
