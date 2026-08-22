@@ -1,11 +1,29 @@
-/**
- * Created by Nipuna
- * Date : 8/13/2026
- * Time : 6:11 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.dto.response;
 
+
+import com.ijse.MediFind.enumeration.ReservationStatus;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class ReservationResDTO {
+
+    private Long id;
+
+    private LocalDateTime reservationDate;
+
+    private LocalDateTime pickupDate;
+
+    private ReservationStatus status;
+
+    private String notes;
+
+    private Long userId;
+
+    private Long pharmacyBranchId;
 }
