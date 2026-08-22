@@ -9,6 +9,8 @@ import com.ijse.MediFind.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
@@ -45,6 +47,19 @@ public class ReservationController {
         return new CommonResponse(
                 OPERATION_SUCCESS,
                 reservation,
+                SUCCESS_MESSAGE
+        );
+    }
+
+    @GetMapping("/reservations")
+    public CommonResponse getAllReservations() {
+
+        List<ReservationResDTO> reservationList =
+                reservationService.getAllReservations();
+
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                reservationList,
                 SUCCESS_MESSAGE
         );
     }
