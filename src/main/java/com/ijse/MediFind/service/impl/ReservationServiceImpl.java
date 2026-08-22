@@ -111,7 +111,58 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public ReservationResDTO updateReservation(Long id, ReservationReqDTO reservationReqDTO) {
-        return null;
+        Reservation reservation =
+                reservationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Reservation not found with id: " + id
+                                )
+                        );
+
+        User user = userRepository
+                .findById(reservationReqDTO.getUserId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with id: "
+                                        + reservationReqDTO.getUserId()
+                        )
+                );
+
+        PharmacyBranch pharmacyBranch = pharmacyBranchRepository
+                        .findById(reservationReqDTO.getPharmacyBranchId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Pharmacy branch not found with id: "
+                                                + reservationReqDTO
+                                                .getPharmacyBranchId()
+                                )
+                        );
+
+        reservation.setReservationDate(reservationReqDTO.getReservationDate());
+
+        reservation.setPickupDate(reservationReqDTO.getPickupDate());
+
+        reservation.setStatus(reservationReqDTO.getStatus());
+
+        reservation.setNotes(reservationReqDTO.getNotes());
+
+        reservation.setUser(user);
+
+        reservation.setPharmacyBranch(pharmacyBranch);
+
+        Reservation updatedReservation = reservationRepository.save(reservation);
+
+        return ReservationResDTO.builder()
+                .id(updatedReservation.getId())
+                .reservationDate(updatedReservation.getReservationDate())
+                .pickupDate(updatedReservation.getPickupDate())
+                .status(updatedReservation.getStatus())
+                .notes(updatedReservation.getNotes())
+                .userId(updatedReservation.getUser().getId())
+                .pharmacyBranchId(updatedReservation
+                                .getPharmacyBranch()
+                                .getId())
+                .build();
     }
 
     @Override
