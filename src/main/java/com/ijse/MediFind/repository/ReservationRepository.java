@@ -1,11 +1,10 @@
-/**
- * Created by ReservationRepository
- * Date : 8/13/2026
- * Time : 5:24 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.repository;
 
-public interface ReservationRepository {
+
+import com.ijse.MediFind.entity.ReservationItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ReservationRepository extends JpaRepository<ReservationItem, Integer> {
 }
