@@ -1,11 +1,19 @@
-/**
- * Created by Nipuna
- * Date : 8/13/2026
- * Time : 6:12 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.dto.request;
 
+import lombok.*;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class ResevationItemReqDTO {
+
+    private Integer quantity;
+
+    private Double unitPrice;
+
+    private Long reservationId;
+
+    private Long medicineId;
 }
