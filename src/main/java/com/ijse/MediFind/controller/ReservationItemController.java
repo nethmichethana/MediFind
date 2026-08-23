@@ -7,6 +7,8 @@ import com.ijse.MediFind.service.ReservationItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
@@ -42,4 +44,16 @@ public class ReservationItemController {
         );
     }
 
+
+    @GetMapping("/reservation-items")
+    public CommonResponse getAllReservationItems() {
+
+        List<ReservationItemResDTO> reservationItemList = reservationItemService.getAllReservationItems();
+
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                reservationItemList,
+                SUCCESS_MESSAGE
+        );
+    }
 }
