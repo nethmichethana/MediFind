@@ -56,4 +56,17 @@ public class ReservationItemController {
                 SUCCESS_MESSAGE
         );
     }
+
+    @PutMapping("/reservation-items/{id}")
+    public CommonResponse updateReservationItem(@PathVariable Long id, @RequestBody ReservationItemReqDTO reservationItemReqDTO) {
+
+        ReservationItemResDTO reservationItem = reservationItemService.updateReservationItem(id, reservationItemReqDTO);
+
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                reservationItem,
+                SUCCESS_MESSAGE
+        );
+    }
+
 }
