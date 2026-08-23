@@ -89,7 +89,18 @@ public class ReservationItemServiceImpl implements ReservationItemService {
 
     @Override
     public List<ReservationItemResDTO> getAllReservationItems() {
-        return List.of();
+        return reservationItemRepository.findAll()
+                .stream()
+                .map(item ->
+                        ReservationItemResDTO.builder()
+                                .id(item.getId())
+                                .quantity(item.getQuantity())
+                                .unitPrice(item.getUnitPrice())
+                                .reservationId(item.getReservation().getId())
+                                .medicineId(item.getMedicine().getId())
+                                .build()
+                )
+                .toList();
     }
 
     @Override
