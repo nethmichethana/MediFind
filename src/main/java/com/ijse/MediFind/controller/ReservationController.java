@@ -4,7 +4,6 @@ package com.ijse.MediFind.controller;
 import com.ijse.MediFind.constants.CommonResponse;
 import com.ijse.MediFind.dto.request.ReservationReqDTO;
 import com.ijse.MediFind.dto.response.ReservationResDTO;
-import com.ijse.MediFind.entity.Reservation;
 import com.ijse.MediFind.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
