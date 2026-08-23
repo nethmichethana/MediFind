@@ -69,7 +69,22 @@ public class ReservationItemServiceImpl implements ReservationItemService {
 
     @Override
     public ReservationItemResDTO getReservationItemById(Long id) {
-        return null;
+        ReservationItem reservationItem =
+                reservationItemRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Reservation item not found with id: "
+                                                + id
+                                )
+                        );
+
+        return ReservationItemResDTO.builder()
+                .id(reservationItem.getId())
+                .quantity(reservationItem.getQuantity())
+                .unitPrice(reservationItem.getUnitPrice())
+                .reservationId(reservationItem.getReservation().getId())
+                .medicineId(reservationItem.getMedicine().getId())
+                .build();
     }
 
     @Override
