@@ -159,6 +159,16 @@ public class ReservationItemServiceImpl implements ReservationItemService {
 
     @Override
     public void deleteReservationItem(Long id) {
+        ReservationItem reservationItem =
+                reservationItemRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Reservation item not found with id: "
+                                                + id
+                                )
+                        );
+
+        reservationItemRepository.delete(reservationItem);
 
     }
 }
