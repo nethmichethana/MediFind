@@ -7,7 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ResevationItemReqDTO {
+public class ReservationItemReqDTO {
 
     private Integer quantity;
 
