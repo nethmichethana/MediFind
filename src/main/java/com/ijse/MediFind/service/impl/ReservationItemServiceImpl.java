@@ -105,7 +105,56 @@ public class ReservationItemServiceImpl implements ReservationItemService {
 
     @Override
     public ReservationItemResDTO updateReservationItem(Long id, ReservationItemReqDTO reservationItemReqDTO) {
-        return null;
+        ReservationItem reservationItem =
+                reservationItemRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Reservation item not found with id: "
+                                                + id
+                                )
+                        );
+
+        Reservation reservation = reservationRepository
+                .findById(
+                        reservationItemReqDTO.getReservationId()
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Reservation not found with id: "
+                                        + reservationItemReqDTO
+                                        .getReservationId()
+                        )
+                );
+
+        Medicine medicine = medicineRepository
+                .findById(
+                        reservationItemReqDTO.getMedicineId()
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Medicine not found with id: "
+                                        + reservationItemReqDTO
+                                        .getMedicineId()
+                        )
+                );
+
+        reservationItem.setQuantity(reservationItemReqDTO.getQuantity());
+
+        reservationItem.setUnitPrice(reservationItemReqDTO.getUnitPrice());
+
+        reservationItem.setReservation(reservation);
+
+        reservationItem.setMedicine(medicine);
+
+        ReservationItem updatedItem = reservationItemRepository.save(reservationItem);
+
+        return ReservationItemResDTO.builder()
+                .id(updatedItem.getId())
+                .quantity(updatedItem.getQuantity())
+                .unitPrice(updatedItem.getUnitPrice())
+                .reservationId(updatedItem.getReservation().getId())
+                .medicineId(updatedItem.getMedicine().getId())
+                .build();
     }
 
     @Override
