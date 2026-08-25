@@ -1,11 +1,9 @@
-/**
- * Created by AuditLogRepository
- * Date : 8/13/2026
- * Time : 5:28 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.repository;
 
-public interface AuditLogRepository {
+import com.ijse.MediFind.entity.AuditLog;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface AuditLogRepository extends JpaRepository<AuditLog,Long> {
 }
