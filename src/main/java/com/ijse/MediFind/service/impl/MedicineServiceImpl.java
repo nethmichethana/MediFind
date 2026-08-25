@@ -9,6 +9,7 @@ import com.ijse.MediFind.exception.ResourceNotFoundException;
 import com.ijse.MediFind.repository.MedicineCategoryRepository;
 import com.ijse.MediFind.repository.MedicineRepository;
 import com.ijse.MediFind.service.MedicineService;
+import com.openai.services.blocking.admin.organization.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,6 +61,8 @@ public class MedicineServiceImpl implements MedicineService {
                 .build();
 
         Medicine savedMedicine = medicineRepository.save(medicine);
+
+
 
         return MedicineResDTO.builder()
                 .id(savedMedicine.getId())
