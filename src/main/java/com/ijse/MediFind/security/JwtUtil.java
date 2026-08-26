@@ -33,7 +33,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setClaims(claims)
-                .subject(user.getName())
+                .subject(user.getEmail())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration)) // Now works with Long
                 .signWith(getSignKey(), SignatureAlgorithm.HS256) // Use HS256, not HS512 with secretKey
