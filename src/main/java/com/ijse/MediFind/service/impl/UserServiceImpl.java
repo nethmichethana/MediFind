@@ -10,6 +10,7 @@ import com.ijse.MediFind.repository.RoleRepository;
 import com.ijse.MediFind.repository.UserRepository;
 import com.ijse.MediFind.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResDTO createUser(UserReqDTO userReqDTO) {
@@ -40,7 +42,7 @@ public class UserServiceImpl implements UserService {
         User user = User.builder()
                 .name(userReqDTO.getName())
                 .email(userReqDTO.getEmail())
-                .password(userReqDTO.getPassword())
+                .password(passwordEncoder.encode(userReqDTO.getPassword()))
                 .phone(userReqDTO.getPhone())
                 .status(userReqDTO.getStatus())
                 .role(role)

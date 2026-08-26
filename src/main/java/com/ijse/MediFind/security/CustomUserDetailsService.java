@@ -2,6 +2,7 @@ package com.ijse.MediFind.security;
 
 import com.ijse.MediFind.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,12 +17,13 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    @NotNull
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Optional<com.ijse.MediFind.entity.User> optionalUser = userRepository.findByEmail(username);
+    public UserDetails loadUserByUsername(@NotNull String email) throws UsernameNotFoundException {
+        Optional<com.ijse.MediFind.entity.User> optionalUser = userRepository.findByEmail(email);
 
         if (optionalUser.isEmpty()) {
-            throw new UsernameNotFoundException("User not found with email: " + username);
+            throw new UsernameNotFoundException("User not found with email: " + email);
         }
 
         com.ijse.MediFind.entity.User user = optionalUser.get();
