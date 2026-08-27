@@ -1,5 +1,3 @@
-// MediFind Customer Portal JS Controller
-// Initializes and drives client state using localStorage for mock persistence
 
 // --- Seed Database Schema ---
 const DEFAULT_CATEGORIES = [
@@ -176,6 +174,24 @@ function initDatabase() {
         localStorage.setItem("medifind_initialized", "true");
     }
 }
+// Backend API Utility
+const API_BASE_URL = "http://localhost:8080";
+async function apiFetch(endpoint, method = "GET", body = null) {
+    const headers = {
+        "Content-Type": "application/json"
+    };
+    const options = { method, headers };
+    if (body) options.body = JSON.stringify(body);
+    
+    try {
+        const response = await fetch(API_BASE_URL + endpoint, options);
+        if (!response.ok) throw new Error("API Network Error");
+        return await response.json();
+    } catch (e) {
+        console.error("API Error", e);
+        return null; // Fallback handled by UI
+    }
+}
 
 // Global UI App States
 let appState = {
@@ -222,6 +238,9 @@ function showSection(sectionId) {
     document.getElementById("catalog-section").style.display = sectionId === 'catalog' ? 'block' : 'none';
     document.getElementById("reservations-section").style.display = sectionId === 'reservations' ? 'block' : 'none';
     
+    const loginSec = document.getElementById("login-section");
+    if (loginSec) loginSec.style.display = sectionId === 'login' ? 'block' : 'none';
+    
     // Update active nav links
     const links = document.querySelectorAll(".nav-link");
     links.forEach(link => {
@@ -262,11 +281,21 @@ function selectCategory(catId) {
 }
 
 // --- Catalog Rendering & Filtering ---
-function renderMedicines() {
+async function renderMedicines() {
     const grid = document.getElementById("medicine-grid");
     if (!grid) return;
 
-    const medicines = getDB("medicines");
+    grid.innerHTML = "<p>Loading catalog...</p>";
+    let medicines = [];
+    const response = await apiFetch("/medicines", "GET");
+    if (response && response.status === 200) {
+        medicines = response.body; // Map List<MedicineResDTO>
+        // cache for drawer filtering
+        setDB("medicines", medicines);
+    } else {
+        medicines = getDB("medicines"); // fallback
+    }
+
     const categories = getDB("categories");
     const searchVal = document.getElementById("catalog-search").value.toLowerCase();
 
@@ -534,7 +563,7 @@ function adjustCartQty(index, change) {
 }
 
 // --- Submit Reservation ---
-function submitReservation() {
+async function submitReservation() {
     if (!appState.currentUser) {
         showToast("Please sign in to place a reservation.", "danger");
         return;
@@ -559,23 +588,62 @@ function submitReservation() {
         return;
     }
 
-    const reservations = getDB("reservations");
-    const inventory = getDB("inventory");
-    const audits = getDB("audits");
-    
-    const newReservationId = reservations.length > 0 ? Math.max(...reservations.map(r => r.id)) + 1 : 1;
     const branchId = appState.cart[0].branchId;
     const branchName = appState.cart[0].branchName;
 
-    // Build reservation record
-    const newRes = {
-        id: newReservationId,
+    // Build reservation record exactly matching ReservationReqDTO
+    const reservationReq = {
         reservationDate: new Date().toISOString(),
         pickupDate: pickupDate.toISOString(),
         status: "PENDING",
         notes: notesVal,
         userId: appState.currentUser.id,
-        branchId: branchId,
+        pharmacyBranchId: branchId
+    };
+
+    try {
+        const resResponse = await apiFetch("/reservations", "POST", reservationReq);
+        if (resResponse && resResponse.status === 200) {
+            const createdRes = resResponse.body; // ReservationResDTO
+            
+            // Post items
+            for (const cartItem of appState.cart) {
+                const itemReq = {
+                    quantity: cartItem.quantity,
+                    unitPrice: cartItem.unitPrice,
+                    reservationId: createdRes.id,
+                    medicineId: cartItem.medicineId
+                };
+                await apiFetch("/reservation-items", "POST", itemReq);
+            }
+
+            document.getElementById("receipt-ref").textContent = `RES-${createdRes.id}`;
+            document.getElementById("receipt-branch").textContent = branchName;
+            document.getElementById("receipt-pickup").textContent = pickupDate.toLocaleString();
+            
+            // Clear cart
+            appState.cart = [];
+            updateCartDisplay();
+            closeDrawer('cart-drawer-backdrop');
+            openModal("receipt-modal");
+
+        } else {
+            fallbackLocalSubmitReservation(reservationReq, branchName, pickupDate);
+        }
+    } catch (e) {
+        fallbackLocalSubmitReservation(reservationReq, branchName, pickupDate);
+    }
+}
+
+function fallbackLocalSubmitReservation(reservationReq, branchName, pickupDate) {
+    console.warn("Backend not available, using local DB mock for reservation");
+    const reservations = getDB("reservations");
+    const newReservationId = reservations.length > 0 ? Math.max(...reservations.map(r => r.id)) + 1 : 1;
+    
+    const newRes = {
+        id: newReservationId,
+        ...reservationReq,
+        branchId: reservationReq.pharmacyBranchId,
         items: appState.cart.map(item => ({
             id: Math.floor(Math.random() * 1000000),
             medicineId: item.medicineId,
@@ -585,45 +653,17 @@ function submitReservation() {
             batchNumber: item.batchNumber
         }))
     };
-
-    // Deduct stock from Inventory
-    let inventoryModified = false;
-    appState.cart.forEach(cartItem => {
-        const invRecord = inventory.find(i => i.branchId === cartItem.branchId && i.batchId === cartItem.batchId);
-        if (invRecord) {
-            invRecord.quantity = Math.max(0, invRecord.quantity - cartItem.quantity);
-            invRecord.lastUpdated = new Date().toISOString();
-            inventoryModified = true;
-        }
-    });
-
-    if (inventoryModified) {
-        setDB("inventory", inventory);
-    }
-
-    // Save Reservation
+    
     reservations.push(newRes);
     setDB("reservations", reservations);
 
-    // Save Audit
-    audits.push({
-        id: audits.length + 1,
-        timestamp: new Date().toISOString(),
-        user: appState.currentUser.email,
-        action: "RESERVATION_CREATION",
-        details: `Reserved ${newRes.items.length} items at branch ${branchName}. Ref ID: RES-${1000 + newReservationId}`
-    });
-    setDB("audits", audits);
-
-    // Clear cart
-    appState.cart = [];
-    updateCartDisplay();
-    closeDrawer('cart-drawer-backdrop');
-
-    // Show confirmation Modal
     document.getElementById("receipt-ref").textContent = `RES-${1000 + newReservationId}`;
     document.getElementById("receipt-branch").textContent = branchName;
     document.getElementById("receipt-pickup").textContent = pickupDate.toLocaleString();
+    
+    appState.cart = [];
+    updateCartDisplay();
+    closeDrawer('cart-drawer-backdrop');
     openModal("receipt-modal");
 }
 
@@ -726,52 +766,63 @@ function cancelReservation(resId) {
 }
 
 // --- Authentication Operations ---
-function handleLogin() {
-    const email = document.getElementById("login-email").value.trim();
-    const pass = document.getElementById("login-password").value.trim();
+async function handleLogin() {
+    await performLogin("login-email", "login-password", true);
+}
+
+async function handlePageLogin() {
+    await performLogin("page-login-email", "page-login-password", false);
+}
+
+async function performLogin(emailId, passId, isModal) {
+    const email = document.getElementById(emailId).value.trim();
+    const pass = document.getElementById(passId).value.trim();
 
     if (!email || !pass) {
         showToast("Please fill in email and password.", "danger");
         return;
     }
 
-    const users = getDB("users");
-    const user = users.find(u => u.email === email && u.password === pass);
+    const payload = { email: email, password: pass };
+    const response = await apiFetch("/v1/auth/login", "POST", payload);
 
-    if (user) {
-        if (user.status !== "ACTIVE") {
-            showToast("Your account is suspended. Contact Admin.", "danger");
+    if (response && response.status === 200) {
+        const user = response.body; // Map LoginResDTO
+        if (!user.active && user.status !== "ACTIVE") {
+            showToast("Your account is not active.", "danger");
             return;
         }
 
         appState.currentUser = user;
         localStorage.setItem("medifind_session", JSON.stringify(user));
         
-        closeModal("login-modal");
-        updateUserHeader();
-        showToast(`Signed in successfully as ${user.name}!`, "success");
+        if (isModal) closeModal("login-modal");
         
-        // Audit log
-        const audits = getDB("audits");
-        audits.push({
-            id: audits.length + 1,
-            timestamp: new Date().toISOString(),
-            user: user.email,
-            action: "USER_LOGIN",
-            details: `User signed in successfully. Role: ${user.role}`
-        });
-        setDB("audits", audits);
-
-        if (user.role !== "CUSTOMER") {
-            // Redirect pharmacy staff/admin to dashboard
-            setTimeout(() => {
-                window.location.href = "dashboard.html";
-            }, 1000);
+        updateUserHeader();
+        showToast(`Signed in successfully as ${user.name || user.email}!`, "success");
+        
+        if (user.role && user.role !== "CUSTOMER") {
+            setTimeout(() => window.location.href = "dashboard.html", 1000);
         } else {
+            showSection('catalog');
             renderCustomerReservations();
         }
     } else {
-        showToast("Invalid email or password.", "danger");
+        // Fallback to local DB if backend fails
+        console.warn("Backend login failed, checking local DB mock...");
+        const users = getDB("users");
+        const user = users.find(u => u.email === email && u.password === pass);
+        if (user) {
+            appState.currentUser = user;
+            localStorage.setItem("medifind_session", JSON.stringify(user));
+            if (isModal) closeModal("login-modal");
+            updateUserHeader();
+            showToast(`Signed in offline as ${user.name}!`, "success");
+            showSection('catalog');
+            renderCustomerReservations();
+        } else {
+            showToast(response?.message || "Invalid email or password.", "danger");
+        }
     }
 }
 
