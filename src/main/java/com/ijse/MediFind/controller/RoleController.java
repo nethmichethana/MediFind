@@ -14,7 +14,7 @@ import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
 
 @RestController
-@RequestMapping
+@RequestMapping("/v1")
 @RequiredArgsConstructor
 public class RoleController {
 

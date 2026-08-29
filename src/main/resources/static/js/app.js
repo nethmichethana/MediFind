@@ -174,750 +174,807 @@ function initDatabase() {
         localStorage.setItem("medifind_initialized", "true");
     }
 }
-// Backend API Utility
+// ============================================================
+// BACKEND API CONFIGURATION
+// ============================================================
+
 const API_BASE_URL = "http://localhost:8080";
+
+
+// ============================================================
+// API FETCH HELPER
+// ============================================================
+
 async function apiFetch(endpoint, method = "GET", body = null) {
+
+    const token = localStorage.getItem("medifind_token");
+
     const headers = {
         "Content-Type": "application/json"
     };
-    const options = { method, headers };
-    if (body) options.body = JSON.stringify(body);
-    
-    try {
-        const response = await fetch(API_BASE_URL + endpoint, options);
-        if (!response.ok) throw new Error("API Network Error");
-        return await response.json();
-    } catch (e) {
-        console.error("API Error", e);
-        return null; // Fallback handled by UI
-    }
-}
 
-// Global UI App States
-let appState = {
-    selectedCategory: "ALL",
-    cart: [],
-    currentUser: null
-};
-
-// Database Getter/Setters
-function getDB(key) {
-    return JSON.parse(localStorage.getItem("medifind_" + key)) || [];
-}
-function setDB(key, data) {
-    localStorage.setItem("medifind_" + key, JSON.stringify(data));
-}
-
-// --- App Initialization ---
-window.onload = function() {
-    initDatabase();
-    
-    // Check if user session exists
-    const storedUser = localStorage.getItem("medifind_session");
-    if (storedUser) {
-        appState.currentUser = JSON.parse(storedUser);
-        updateUserHeader();
+    // JWT token exists නම් Authorization header එක add කරනවා
+    if (token) {
+        headers["Authorization"] = "Bearer " + token;
     }
 
-    renderCategoryTabs();
-    renderMedicines();
-    updateCartDisplay();
-    
-    // Default dates on picker (24 hours ahead)
-    const picker = document.getElementById("checkout-pickup");
-    if (picker) {
-        const tomorrow = new Date();
-        tomorrow.setHours(tomorrow.getHours() + 24);
-        tomorrow.setMinutes(0);
-        picker.value = tomorrow.toISOString().slice(0, 16);
-    }
-};
-
-// --- Portal View Sections ---
-function showSection(sectionId) {
-    document.getElementById("catalog-section").style.display = sectionId === 'catalog' ? 'block' : 'none';
-    document.getElementById("reservations-section").style.display = sectionId === 'reservations' ? 'block' : 'none';
-    
-    const loginSec = document.getElementById("login-section");
-    if (loginSec) loginSec.style.display = sectionId === 'login' ? 'block' : 'none';
-    
-    // Update active nav links
-    const links = document.querySelectorAll(".nav-link");
-    links.forEach(link => {
-        if (link.textContent.toLowerCase().includes(sectionId.slice(0, 5))) {
-            link.classList.add("active");
-        } else {
-            link.classList.remove("active");
-        }
-    });
-
-    if (sectionId === 'reservations') {
-        renderCustomerReservations();
-    }
-}
-
-// --- Category Tabs Rendering ---
-function renderCategoryTabs() {
-    const container = document.getElementById("category-tabs");
-    if (!container) return;
-
-    const categories = getDB("categories");
-    // Clear and keep "All"
-    container.innerHTML = `<button class="tab-btn ${appState.selectedCategory === 'ALL' ? 'active' : ''}" onclick="selectCategory('ALL')">All Products</button>`;
-    
-    categories.forEach(cat => {
-        const btn = document.createElement("button");
-        btn.className = `tab-btn ${appState.selectedCategory == cat.id ? 'active' : ''}`;
-        btn.textContent = cat.name;
-        btn.onclick = () => selectCategory(cat.id);
-        container.appendChild(btn);
-    });
-}
-
-function selectCategory(catId) {
-    appState.selectedCategory = catId;
-    renderCategoryTabs();
-    renderMedicines();
-}
-
-// --- Catalog Rendering & Filtering ---
-async function renderMedicines() {
-    const grid = document.getElementById("medicine-grid");
-    if (!grid) return;
-
-    grid.innerHTML = "<p>Loading catalog...</p>";
-    let medicines = [];
-    const response = await apiFetch("/medicines", "GET");
-    if (response && response.status === 200) {
-        medicines = response.body; // Map List<MedicineResDTO>
-        // cache for drawer filtering
-        setDB("medicines", medicines);
-    } else {
-        medicines = getDB("medicines"); // fallback
-    }
-
-    const categories = getDB("categories");
-    const searchVal = document.getElementById("catalog-search").value.toLowerCase();
-
-    grid.innerHTML = "";
-
-    const filtered = medicines.filter(med => {
-        const matchCategory = appState.selectedCategory === "ALL" || med.categoryId == appState.selectedCategory;
-        const matchSearch = med.name.toLowerCase().includes(searchVal) || 
-                            med.genericName.toLowerCase().includes(searchVal) || 
-                            med.brandName.toLowerCase().includes(searchVal) || 
-                            med.description.toLowerCase().includes(searchVal);
-        return med.active && matchCategory && matchSearch;
-    });
-
-    if (filtered.length === 0) {
-        grid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 4rem 1rem; color: var(--text-secondary);">
-                <p style="font-size: 1.1rem; margin-bottom: 1rem;">No medicines found matching your search criteria.</p>
-                <button class="btn btn-secondary" onclick="resetSearch()">Clear Filters</button>
-            </div>
-        `;
-        return;
-    }
-
-    filtered.forEach(med => {
-        const cat = categories.find(c => c.id == med.categoryId);
-        const catName = cat ? cat.name : "Uncategorized";
-
-        const card = document.createElement("div");
-        card.className = "glass-card med-card animate-fade";
-        card.innerHTML = `
-            <div class="med-header">
-                <span class="med-category">${catName}</span>
-                ${med.prescriptionRequired ? '<span class="badge badge-danger">Rx Required</span>' : '<span class="badge badge-success">Over-Counter</span>'}
-            </div>
-            <h3 class="med-title">${med.name}</h3>
-            <div class="med-subtitles">
-                <span><strong>Generic:</strong> ${med.genericName}</span>
-                <span><strong>Brand:</strong> ${med.brandName}</span>
-            </div>
-            <p class="med-description">${med.description}</p>
-            <div class="med-meta">
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                    <span>Form: ${med.dosageForm}</span> | <span>Str: ${med.strength}</span>
-                </div>
-                <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="checkAvailability(${med.id})">Availability</button>
-            </div>
-        `;
-        grid.appendChild(card);
-    });
-}
-
-function filterMedicines() {
-    renderMedicines();
-}
-
-function resetSearch() {
-    document.getElementById("catalog-search").value = "";
-    appState.selectedCategory = "ALL";
-    renderCategoryTabs();
-    renderMedicines();
-}
-
-// --- Availability Check Drawer Logic ---
-let selectedMedicineForReserve = null;
-
-function checkAvailability(medId) {
-    const medicines = getDB("medicines");
-    const batches = getDB("batches");
-    const inventory = getDB("inventory");
-    const branches = getDB("branches");
-
-    const med = medicines.find(m => m.id == medId);
-    if (!med) return;
-
-    selectedMedicineForReserve = med;
-
-    // Fill drawer content
-    document.getElementById("drawer-med-name").textContent = med.name;
-    document.getElementById("drawer-med-category").textContent = getDB("categories").find(c => c.id == med.categoryId)?.name || "General";
-    document.getElementById("drawer-med-generic").textContent = med.genericName;
-    document.getElementById("drawer-med-description").textContent = med.description;
-    document.getElementById("drawer-med-strength").textContent = med.strength;
-    document.getElementById("drawer-med-form").textContent = med.dosageForm;
-    document.getElementById("drawer-med-rx").style.display = med.prescriptionRequired ? "inline-flex" : "none";
-
-    const branchListContainer = document.getElementById("drawer-branches-stock");
-    branchListContainer.innerHTML = "";
-
-    // Join tables: Find which branches have stock for batches of this medicine
-    const medBatches = batches.filter(b => b.medicineId == medId);
-    
-    branches.forEach(branch => {
-        if (!branch.active) return;
-
-        // Calculate cumulative stock for this medicine at this branch
-        let totalStock = 0;
-        let batchPrices = [];
-        let matchingBatches = [];
-
-        medBatches.forEach(batch => {
-            const invRecord = inventory.find(i => i.branchId == branch.id && i.batchId == batch.id);
-            if (invRecord) {
-                totalStock += invRecord.quantity;
-                batchPrices.push(batch.unitPrice);
-                matchingBatches.push({
-                    batchId: batch.id,
-                    batchNumber: batch.batchNumber,
-                    unitPrice: batch.unitPrice,
-                    available: invRecord.quantity
-                });
-            }
-        });
-
-        const hasStock = totalStock > 0;
-        const priceStr = batchPrices.length > 0 ? `LKR ${Math.min(...batchPrices).toFixed(2)} - LKR ${Math.max(...batchPrices).toFixed(2)}` : "Price N/A";
-        
-        const bCard = document.createElement("div");
-        bCard.className = `branch-card ${hasStock ? 'has-stock' : 'no-stock'}`;
-        
-        bCard.innerHTML = `
-            <div class="branch-header">
-                <span class="branch-name">${branch.name}</span>
-                <span class="badge ${hasStock ? 'badge-success' : 'badge-danger'}">
-                    ${hasStock ? `${totalStock} In Stock` : 'Out of Stock'}
-                </span>
-            </div>
-            <div class="branch-details">
-                <div style="margin-bottom: 2px;">${branch.address}, ${branch.city}</div>
-                <div>Phone: ${branch.phone} | Price: <span style="color: var(--primary-light); font-weight:600;">${priceStr}</span></div>
-            </div>
-            ${hasStock ? `
-                <div class="branch-action">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">Qty:</span>
-                        <input type="number" id="qty-input-${branch.id}" class="form-control" value="1" min="1" max="${totalStock}" style="width: 70px; padding: 0.25rem 0.5rem; text-align: center;">
-                    </div>
-                    <button class="btn btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.85rem;" onclick="addToReservation(${branch.id}, ${totalStock}, ${matchingBatches[0].unitPrice}, '${matchingBatches[0].batchNumber}', ${matchingBatches[0].batchId})">
-                        Reserve Item
-                    </button>
-                </div>
-            ` : `
-                <div style="font-size: 0.8rem; color: var(--accent-rose); font-weight: 500;">
-                    Currently out of stock. Contact branch for incoming batch schedules.
-                </div>
-            `}
-        `;
-        branchListContainer.appendChild(bCard);
-    });
-
-    openDrawer("availability-drawer-backdrop");
-}
-
-// --- Cart Actions ---
-function addToReservation(branchId, maxStock, unitPrice, batchNumber, batchId) {
-    if (!appState.currentUser) {
-        closeDrawer('availability-drawer-backdrop');
-        openModal('login-modal');
-        showToast("Please sign in to place a reservation request.", "warning");
-        return;
-    }
-
-    const qty = parseInt(document.getElementById(`qty-input-${branchId}`).value);
-    if (isNaN(qty) || qty <= 0) {
-        showToast("Please enter a valid quantity.", "danger");
-        return;
-    }
-
-    if (qty > maxStock) {
-        showToast(`Selected quantity exceeds available stock (${maxStock} units).`, "danger");
-        return;
-    }
-
-    const branch = getDB("branches").find(b => b.id == branchId);
-    
-    // Check if adding items from multiple branches (prevent single reservation spanning multiple branches)
-    if (appState.cart.length > 0 && appState.cart[0].branchId !== branchId) {
-        if (!confirm("Your cart contains items from another branch. Clear current cart to reserve at this branch?")) {
-            return;
-        }
-        appState.cart = [];
-    }
-
-    // Add to cart state
-    const existingIndex = appState.cart.findIndex(item => item.medicineId === selectedMedicineForReserve.id);
-    if (existingIndex > -1) {
-        appState.cart[existingIndex].quantity = qty; // update
-    } else {
-        appState.cart.push({
-            medicineId: selectedMedicineForReserve.id,
-            medicineName: selectedMedicineForReserve.name,
-            branchId: branchId,
-            branchName: branch.name,
-            batchId: batchId,
-            batchNumber: batchNumber,
-            unitPrice: unitPrice,
-            quantity: qty
-        });
-    }
-
-    updateCartDisplay();
-    closeDrawer('availability-drawer-backdrop');
-    openDrawer('cart-drawer-backdrop');
-    showToast("Added to reservation cart.", "success");
-}
-
-function updateCartDisplay() {
-    const countBadge = document.getElementById("cart-badge-count");
-    const container = document.getElementById("cart-items-container");
-    const totalQtySpan = document.getElementById("cart-total-qty");
-
-    if (countBadge) countBadge.textContent = appState.cart.length;
-
-    if (!container) return;
-
-    if (appState.cart.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 4rem 1rem; color: var(--text-secondary);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                <p>Your reservation cart is empty.</p>
-            </div>
-        `;
-        if (totalQtySpan) totalQtySpan.textContent = "0 Items";
-        return;
-    }
-
-    container.innerHTML = "";
-    let totalQty = 0;
-    
-    appState.cart.forEach((item, index) => {
-        totalQty += item.quantity;
-        const row = document.createElement("div");
-        row.className = "cart-item animate-fade";
-        row.innerHTML = `
-            <div class="cart-item-info">
-                <h4>${item.medicineName}</h4>
-                <p>Branch: ${item.branchName}</p>
-                <p>Batch: ${item.batchNumber} | LKR ${item.unitPrice.toFixed(2)}/unit</p>
-            </div>
-            <div class="cart-item-qty">
-                <button class="btn btn-secondary qty-btn" onclick="adjustCartQty(${index}, -1)">-</button>
-                <span style="font-weight:600; min-width: 20px; text-align:center;">${item.quantity}</span>
-                <button class="btn btn-secondary qty-btn" onclick="adjustCartQty(${index}, 1)">+</button>
-                <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 8px;" onclick="adjustCartQty(${index}, -999)">Remove</button>
-            </div>
-        `;
-        container.appendChild(row);
-    });
-
-    if (totalQtySpan) totalQtySpan.textContent = `${totalQty} Unit(s)`;
-}
-
-function adjustCartQty(index, change) {
-    if (change === -999) {
-        appState.cart.splice(index, 1);
-    } else {
-        appState.cart[index].quantity += change;
-        if (appState.cart[index].quantity <= 0) {
-            appState.cart.splice(index, 1);
-        }
-    }
-    updateCartDisplay();
-}
-
-// --- Submit Reservation ---
-async function submitReservation() {
-    if (!appState.currentUser) {
-        showToast("Please sign in to place a reservation.", "danger");
-        return;
-    }
-
-    if (appState.cart.length === 0) {
-        showToast("Your reservation cart is empty.", "danger");
-        return;
-    }
-
-    const pickupVal = document.getElementById("checkout-pickup").value;
-    const notesVal = document.getElementById("checkout-notes").value;
-
-    if (!pickupVal) {
-        showToast("Please specify a pickup date and time.", "danger");
-        return;
-    }
-
-    const pickupDate = new Date(pickupVal);
-    if (pickupDate <= new Date()) {
-        showToast("Pickup time must be in the future.", "danger");
-        return;
-    }
-
-    const branchId = appState.cart[0].branchId;
-    const branchName = appState.cart[0].branchName;
-
-    // Build reservation record exactly matching ReservationReqDTO
-    const reservationReq = {
-        reservationDate: new Date().toISOString(),
-        pickupDate: pickupDate.toISOString(),
-        status: "PENDING",
-        notes: notesVal,
-        userId: appState.currentUser.id,
-        pharmacyBranchId: branchId
+    const options = {
+        method: method,
+        headers: headers
     };
 
+    if (body !== null) {
+        options.body = JSON.stringify(body);
+    }
+
     try {
-        const resResponse = await apiFetch("/reservations", "POST", reservationReq);
-        if (resResponse && resResponse.status === 200) {
-            const createdRes = resResponse.body; // ReservationResDTO
-            
-            // Post items
-            for (const cartItem of appState.cart) {
-                const itemReq = {
-                    quantity: cartItem.quantity,
-                    unitPrice: cartItem.unitPrice,
-                    reservationId: createdRes.id,
-                    medicineId: cartItem.medicineId
-                };
-                await apiFetch("/reservation-items", "POST", itemReq);
-            }
 
-            document.getElementById("receipt-ref").textContent = `RES-${createdRes.id}`;
-            document.getElementById("receipt-branch").textContent = branchName;
-            document.getElementById("receipt-pickup").textContent = pickupDate.toLocaleString();
-            
-            // Clear cart
-            appState.cart = [];
-            updateCartDisplay();
-            closeDrawer('cart-drawer-backdrop');
-            openModal("receipt-modal");
+        const response = await fetch(
+            API_BASE_URL + endpoint,
+            options
+        );
 
+        // Response එක JSON ද කියලා බලනවා
+        const contentType = response.headers.get("content-type");
+
+        let data = null;
+
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
         } else {
-            fallbackLocalSubmitReservation(reservationReq, branchName, pickupDate);
+            data = await response.text();
         }
-    } catch (e) {
-        fallbackLocalSubmitReservation(reservationReq, branchName, pickupDate);
+
+        /*
+         * CommonResponse structure:
+         *
+         * {
+         *     status: 200,
+         *     body: {...},
+         *     message: "Success"
+         * }
+         */
+
+        if (!response.ok) {
+
+            console.error(
+                "API Error:",
+                response.status,
+                data
+            );
+
+            return {
+                status: response.status,
+                body: null,
+                message:
+                    data?.message ||
+                    data?.error ||
+                    "Request failed"
+            };
+        }
+
+        return {
+            status: response.status,
+            body: data?.body ?? data,
+            message: data?.message || "Success"
+        };
+
+    } catch (error) {
+
+        console.error("Backend connection error:", error);
+
+        return {
+            status: 0,
+            body: null,
+            message:
+                "Cannot connect to backend. Make sure Spring Boot is running on port 8080."
+        };
     }
 }
 
-function fallbackLocalSubmitReservation(reservationReq, branchName, pickupDate) {
-    console.warn("Backend not available, using local DB mock for reservation");
-    const reservations = getDB("reservations");
-    const newReservationId = reservations.length > 0 ? Math.max(...reservations.map(r => r.id)) + 1 : 1;
-    
-    const newRes = {
-        id: newReservationId,
-        ...reservationReq,
-        branchId: reservationReq.pharmacyBranchId,
-        items: appState.cart.map(item => ({
-            id: Math.floor(Math.random() * 1000000),
-            medicineId: item.medicineId,
-            medicineName: item.medicineName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            batchNumber: item.batchNumber
-        }))
-    };
-    
-    reservations.push(newRes);
-    setDB("reservations", reservations);
 
-    document.getElementById("receipt-ref").textContent = `RES-${1000 + newReservationId}`;
-    document.getElementById("receipt-branch").textContent = branchName;
-    document.getElementById("receipt-pickup").textContent = pickupDate.toLocaleString();
-    
-    appState.cart = [];
-    updateCartDisplay();
-    closeDrawer('cart-drawer-backdrop');
-    openModal("receipt-modal");
-}
+// ============================================================
+// AUTHENTICATION OPERATIONS
+// ============================================================
 
-function closeReceiptModal() {
-    closeModal("receipt-modal");
-    showSection("reservations");
-}
 
-// --- Customer Reservations Rendering ---
-function renderCustomerReservations() {
-    const tableBody = document.getElementById("customer-reservations-table");
-    if (!tableBody) return;
+// ------------------------------------------------------------
+// Login button inside Login Modal
+// ------------------------------------------------------------
 
-    if (!appState.currentUser) {
-        tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Please sign in to view your reservations.</td></tr>`;
-        return;
-    }
-
-    const reservations = getDB("reservations");
-    const userRes = reservations.filter(r => r.userId === appState.currentUser.id);
-    const branches = getDB("branches");
-
-    if (userRes.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No active reservations found.</td></tr>`;
-        return;
-    }
-
-    tableBody.innerHTML = "";
-    userRes.sort((a,b) => new Date(b.reservationDate) - new Date(a.reservationDate)).forEach(res => {
-        const branchName = branches.find(b => b.id == res.branchId)?.name || "Unknown Branch";
-        
-        let statusBadge = "";
-        if (res.status === "PENDING") statusBadge = `<span class="badge badge-warning">Pending Review</span>`;
-        else if (res.status === "PREPARED") statusBadge = `<span class="badge badge-info">Prepared (Ready)</span>`;
-        else if (res.status === "COMPLETED") statusBadge = `<span class="badge badge-success">Picked Up</span>`;
-        else if (res.status === "CANCELLED") statusBadge = `<span class="badge badge-danger">Cancelled</span>`;
-
-        const itemsStr = res.items.map(i => `${i.medicineName} (${i.quantity})`).join(", ");
-        
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td><strong>RES-${1000 + res.id}</strong></td>
-            <td>${branchName}</td>
-            <td>${new Date(res.reservationDate).toLocaleString()}</td>
-            <td>${new Date(res.pickupDate).toLocaleString()}</td>
-            <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${itemsStr}">${itemsStr}</td>
-            <td>${statusBadge}</td>
-            <td><small style="color:var(--text-muted);">${res.notes || 'None'}</small></td>
-            <td>
-                ${res.status === 'PENDING' || res.status === 'PREPARED' ? `
-                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="cancelReservation(${res.id})">Cancel</button>
-                ` : `<span style="font-size: 0.8rem; color: var(--text-muted);">No actions</span>`}
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-}
-
-function cancelReservation(resId) {
-    if (!confirm("Are you sure you want to cancel this reservation request?")) return;
-
-    const reservations = getDB("reservations");
-    const resIndex = reservations.findIndex(r => r.id == resId);
-    
-    if (resIndex > -1) {
-        reservations[resIndex].status = "CANCELLED";
-        
-        // Return stock back to inventory
-        const inventory = getDB("inventory");
-        const batches = getDB("batches");
-        const res = reservations[resIndex];
-
-        res.items.forEach(resItem => {
-            const batch = batches.find(b => b.medicineId === resItem.medicineId && b.batchNumber === resItem.batchNumber);
-            if (batch) {
-                const invRecord = inventory.find(i => i.branchId === res.branchId && i.batchId === batch.id);
-                if (invRecord) {
-                    invRecord.quantity += resItem.quantity;
-                }
-            }
-        });
-
-        setDB("inventory", inventory);
-        setDB("reservations", reservations);
-
-        // Audit Log
-        const audits = getDB("audits");
-        audits.push({
-            id: audits.length + 1,
-            timestamp: new Date().toISOString(),
-            user: appState.currentUser.email,
-            action: "RESERVATION_CANCEL",
-            details: `Cancelled reservation request RES-${1000 + resId}. Returned stock.`
-        });
-        setDB("audits", audits);
-
-        showToast("Reservation cancelled successfully.", "success");
-        renderCustomerReservations();
-    }
-}
-
-// --- Authentication Operations ---
 async function handleLogin() {
-    await performLogin("login-email", "login-password", true);
+
+    await performLogin(
+        "login-email",
+        "login-password",
+        true
+    );
 }
+
+
+// ------------------------------------------------------------
+// Login page section
+// ------------------------------------------------------------
 
 async function handlePageLogin() {
-    await performLogin("page-login-email", "page-login-password", false);
+
+    await performLogin(
+        "page-login-email",
+        "page-login-password",
+        false
+    );
 }
 
-async function performLogin(emailId, passId, isModal) {
-    const email = document.getElementById(emailId).value.trim();
-    const pass = document.getElementById(passId).value.trim();
 
-    if (!email || !pass) {
-        showToast("Please fill in email and password.", "danger");
+// ------------------------------------------------------------
+// Common Login Function
+// ------------------------------------------------------------
+
+async function performLogin(
+    emailId,
+    passwordId,
+    isModal
+) {
+
+    const emailInput =
+        document.getElementById(emailId);
+
+    const passwordInput =
+        document.getElementById(passwordId);
+
+    if (!emailInput || !passwordInput) {
+
+        showToast(
+            "Login form fields not found.",
+            "danger"
+        );
+
         return;
     }
 
-    const payload = { email: email, password: pass };
-    const response = await apiFetch("/v1/auth/login", "POST", payload);
+    const email =
+        emailInput.value.trim();
 
-    if (response && response.status === 200) {
-        const user = response.body; // Map LoginResDTO
-        if (!user.active && user.status !== "ACTIVE") {
-            showToast("Your account is not active.", "danger");
-            return;
-        }
+    const password =
+        passwordInput.value.trim();
 
-        appState.currentUser = user;
-        localStorage.setItem("medifind_session", JSON.stringify(user));
-        
-        if (isModal) closeModal("login-modal");
-        
-        updateUserHeader();
-        showToast(`Signed in successfully as ${user.name || user.email}!`, "success");
-        
-        if (user.role && user.role !== "CUSTOMER") {
-            setTimeout(() => window.location.href = "dashboard.html", 1000);
-        } else {
-            showSection('catalog');
-            renderCustomerReservations();
-        }
-    } else {
-        // Fallback to local DB if backend fails
-        console.warn("Backend login failed, checking local DB mock...");
-        const users = getDB("users");
-        const user = users.find(u => u.email === email && u.password === pass);
-        if (user) {
-            appState.currentUser = user;
-            localStorage.setItem("medifind_session", JSON.stringify(user));
-            if (isModal) closeModal("login-modal");
-            updateUserHeader();
-            showToast(`Signed in offline as ${user.name}!`, "success");
-            showSection('catalog');
-            renderCustomerReservations();
-        } else {
-            showToast(response?.message || "Invalid email or password.", "danger");
-        }
-    }
-}
 
-function handleSignup() {
-    const name = document.getElementById("signup-name").value.trim();
-    const email = document.getElementById("signup-email").value.trim();
-    const phone = document.getElementById("signup-phone").value.trim();
-    const password = document.getElementById("signup-password").value.trim();
+    // --------------------------------------------------------
+    // Validation
+    // --------------------------------------------------------
 
-    if (!name || !email || !phone || !password) {
-        showToast("Please fill in all registration fields.", "danger");
+    if (!email || !password) {
+
+        showToast(
+            "Please enter email and password.",
+            "danger"
+        );
+
         return;
     }
 
-    const users = getDB("users");
-    if (users.some(u => u.email === email)) {
-        showToast("An account already exists with this email address.", "danger");
-        return;
-    }
 
-    const newUser = {
-        id: users.length + 1,
-        name: name,
+    // --------------------------------------------------------
+    // Login Request
+    // --------------------------------------------------------
+
+    const loginRequest = {
+
         email: email,
-        password: password,
-        phone: phone,
-        role: "CUSTOMER",
-        status: "ACTIVE"
+
+        password: password
     };
 
-    users.push(newUser);
-    setDB("users", users);
 
-    appState.currentUser = newUser;
-    localStorage.setItem("medifind_session", JSON.stringify(newUser));
+    showToast(
+        "Signing in...",
+        "info"
+    );
 
-    closeModal("signup-modal");
-    updateUserHeader();
-    showToast(`Welcome to MediFind, ${name}!`, "success");
 
-    // Audit log
-    const audits = getDB("audits");
-    audits.push({
-        id: audits.length + 1,
-        timestamp: new Date().toISOString(),
-        user: email,
-        action: "CUSTOMER_REGISTER",
-        details: `Customer registered account: ${name} (${phone})`
-    });
-    setDB("audits", audits);
-}
+    const response = await apiFetch(
+        "/v1/auth/login",
+        "POST",
+        loginRequest
+    );
 
-function handleLogout() {
-    if (appState.currentUser) {
-        // Audit log
-        const audits = getDB("audits");
-        audits.push({
-            id: audits.length + 1,
-            timestamp: new Date().toISOString(),
-            user: appState.currentUser.email,
-            action: "USER_LOGOUT",
-            details: "User logged out of customer session."
-        });
-        setDB("audits", audits);
+
+    // --------------------------------------------------------
+    // Login Failed
+    // --------------------------------------------------------
+
+    if (!response || response.status !== 200) {
+
+        showToast(
+            response?.message ||
+            "Invalid email or password.",
+            "danger"
+        );
+
+        return;
     }
 
-    appState.currentUser = null;
-    appState.cart = [];
-    localStorage.removeItem("medifind_session");
+
+    // --------------------------------------------------------
+    // Login Response
+    // --------------------------------------------------------
+
+    const loginData = response.body;
+
+
+    if (!loginData) {
+
+        showToast(
+            "Invalid response received from server.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    /*
+     * Expected LoginResDTO:
+     *
+     * {
+     *     token: "...",
+     *     userId: 1,
+     *     name: "Admin",
+     *     email: "admin@medifind.com",
+     *     role: "ADMIN"
+     * }
+     */
+
+
+    const token = loginData.token;
+
+
+    if (!token) {
+
+        showToast(
+            "Login successful but JWT token was not received.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Save JWT
+    // --------------------------------------------------------
+
+    localStorage.setItem(
+        "medifind_token",
+        token
+    );
+
+
+    // --------------------------------------------------------
+    // Create frontend session object
+    // --------------------------------------------------------
+
+    const user = {
+
+        id: loginData.userId,
+
+        name: loginData.name,
+
+        email: loginData.email,
+
+        role: loginData.role
+    };
+
+
+    appState.currentUser = user;
+
+
+    localStorage.setItem(
+        "medifind_session",
+        JSON.stringify(user)
+    );
+
+
+    // --------------------------------------------------------
+    // Close modal
+    // --------------------------------------------------------
+
+    if (isModal) {
+
+        closeModal("login-modal");
+    }
+
+
+    // --------------------------------------------------------
+    // Update UI
+    // --------------------------------------------------------
+
     updateUserHeader();
-    updateCartDisplay();
-    showSection("catalog");
-    showToast("Logged out successfully.", "info");
+
+
+    showToast(
+        `Welcome back, ${user.name || user.email}!`,
+        "success"
+    );
+
+
+    // --------------------------------------------------------
+    // Role-based navigation
+    // --------------------------------------------------------
+
+    const role = user.role
+        ? user.role.toUpperCase()
+        : "";
+
+
+    if (
+        role === "ADMIN" ||
+        role === "PHARMACY_ADMIN" ||
+        role === "PHARMACY_STAFF"
+    ) {
+
+        setTimeout(() => {
+
+            window.location.href =
+                "dashboard.html";
+
+        }, 800);
+
+    } else {
+
+        // CUSTOMER
+
+        showSection("catalog");
+
+        renderCustomerReservations();
+    }
 }
 
+
+// ============================================================
+// SIGNUP
+// ============================================================
+
+async function handleSignup() {
+
+    const nameInput =
+        document.getElementById("signup-name");
+
+    const emailInput =
+        document.getElementById("signup-email");
+
+    const phoneInput =
+        document.getElementById("signup-phone");
+
+    const passwordInput =
+        document.getElementById("signup-password");
+
+
+    if (
+        !nameInput ||
+        !emailInput ||
+        !phoneInput ||
+        !passwordInput
+    ) {
+
+        showToast(
+            "Signup form fields not found.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    const name =
+        nameInput.value.trim();
+
+    const email =
+        emailInput.value.trim();
+
+    const phone =
+        phoneInput.value.trim();
+
+    const password =
+        passwordInput.value.trim();
+
+
+    // --------------------------------------------------------
+    // Validation
+    // --------------------------------------------------------
+
+    if (
+        !name ||
+        !email ||
+        !phone ||
+        !password
+    ) {
+
+        showToast(
+            "Please fill in all registration fields.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Basic email validation
+    // --------------------------------------------------------
+
+    const emailPattern =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(email)) {
+
+        showToast(
+            "Please enter a valid email address.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Customer Role
+    // --------------------------------------------------------
+
+    /*
+     * IMPORTANT:
+     *
+     * UserReqDTO requires:
+     *
+     * name
+     * email
+     * password
+     * phone
+     * status
+     * roleId
+     *
+     * Customer role ID එක database එකෙන් dynamically
+     * find කරනවා.
+     */
+
+
+    showToast(
+        "Checking customer role...",
+        "info"
+    );
+
+
+    const rolesResponse = await apiFetch(
+        "/v1/roles",
+        "GET"
+    );
+
+
+    if (
+        !rolesResponse ||
+        rolesResponse.status !== 200
+    ) {
+
+        showToast(
+            "Cannot load roles from backend.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    const roles = rolesResponse.body;
+
+
+    if (!Array.isArray(roles)) {
+
+        showToast(
+            "Invalid roles response from backend.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Find CUSTOMER role
+    // --------------------------------------------------------
+
+    const customerRole =
+        roles.find(role => {
+
+            const roleName =
+                role.roleName ||
+                role.name;
+
+            return roleName &&
+                roleName.toUpperCase() === "CUSTOMER";
+        });
+
+
+    if (!customerRole) {
+
+        showToast(
+            "CUSTOMER role was not found in database.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Create User Request
+    // --------------------------------------------------------
+
+    const userRequest = {
+
+        name: name,
+
+        email: email,
+
+        password: password,
+
+        phone: phone,
+
+        status: "ACTIVE",
+
+        roleId: customerRole.id
+    };
+
+
+    console.log(
+        "Signup Request:",
+        {
+            ...userRequest,
+            password: "********"
+        }
+    );
+
+
+    // --------------------------------------------------------
+    // Send request to backend
+    // --------------------------------------------------------
+
+    showToast(
+        "Creating your account...",
+        "info"
+    );
+
+
+    const response = await apiFetch(
+        "/v1/users",
+        "POST",
+        userRequest
+    );
+
+
+    // --------------------------------------------------------
+    // Signup failed
+    // --------------------------------------------------------
+
+    if (
+        !response ||
+        response.status !== 200
+    ) {
+
+        showToast(
+            response?.message ||
+            "Unable to create account.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Signup successful
+    // --------------------------------------------------------
+
+    const createdUser =
+        response.body;
+
+
+    console.log(
+        "Created User:",
+        createdUser
+    );
+
+
+    showToast(
+        "Account created successfully! Please sign in.",
+        "success"
+    );
+
+
+    // --------------------------------------------------------
+    // Clear signup form
+    // --------------------------------------------------------
+
+    nameInput.value = "";
+
+    emailInput.value = "";
+
+    phoneInput.value = "";
+
+    passwordInput.value = "";
+
+
+    // --------------------------------------------------------
+    // Close signup modal
+    // --------------------------------------------------------
+
+    closeModal("signup-modal");
+
+
+    // --------------------------------------------------------
+    // Open login modal
+    // --------------------------------------------------------
+
+    setTimeout(() => {
+
+        openModal("login-modal");
+
+        const loginEmail =
+            document.getElementById("login-email");
+
+        if (loginEmail) {
+
+            loginEmail.value = email;
+        }
+
+        const loginPassword =
+            document.getElementById("login-password");
+
+        if (loginPassword) {
+
+            loginPassword.value = "";
+        }
+
+    }, 500);
+}
+
+
+// ============================================================
+// LOGOUT
+// ============================================================
+
+function handleLogout() {
+
+    // Remove frontend user session
+
+    appState.currentUser = null;
+
+    appState.cart = [];
+
+
+    // Remove JWT
+
+    localStorage.removeItem(
+        "medifind_token"
+    );
+
+
+    // Remove user session
+
+    localStorage.removeItem(
+        "medifind_session"
+    );
+
+
+    updateUserHeader();
+
+    updateCartDisplay();
+
+
+    showSection(
+        "catalog"
+    );
+
+
+    showToast(
+        "Logged out successfully.",
+        "info"
+    );
+}
+
+
+// ============================================================
+// USER HEADER
+// ============================================================
+
 function updateUserHeader() {
-    const userDisplay = document.getElementById("user-display");
-    const authButtons = document.getElementById("auth-buttons");
-    const greeting = document.getElementById("user-greeting");
-    const dashLink = document.getElementById("nav-dashboard-link");
+
+    const userDisplay =
+        document.getElementById("user-display");
+
+    const authButtons =
+        document.getElementById("auth-buttons");
+
+    const greeting =
+        document.getElementById("user-greeting");
+
+    const dashLink =
+        document.getElementById("nav-dashboard-link");
+
 
     if (appState.currentUser) {
-        greeting.textContent = `Hello, ${appState.currentUser.name} (${appState.currentUser.role.replace('_',' ')})`;
-        userDisplay.style.display = "flex";
-        authButtons.style.display = "none";
-        
-        if (appState.currentUser.role !== "CUSTOMER") {
-            dashLink.style.display = "inline-block";
-        } else {
-            dashLink.style.display = "none";
+
+        const user =
+            appState.currentUser;
+
+
+        if (greeting) {
+
+            greeting.textContent =
+                `Hello, ${user.name} (${(user.role || "")
+                    .replaceAll("_", " ")})`;
         }
+
+
+        if (userDisplay) {
+
+            userDisplay.style.display =
+                "flex";
+        }
+
+
+        if (authButtons) {
+
+            authButtons.style.display =
+                "none";
+        }
+
+
+        const role =
+            (user.role || "").toUpperCase();
+
+
+        if (
+            role === "ADMIN" ||
+            role === "PHARMACY_ADMIN" ||
+            role === "PHARMACY_STAFF"
+        ) {
+
+            if (dashLink) {
+
+                dashLink.style.display =
+                    "inline-block";
+            }
+
+        } else {
+
+            if (dashLink) {
+
+                dashLink.style.display =
+                    "none";
+            }
+        }
+
     } else {
-        userDisplay.style.display = "none";
-        authButtons.style.display = "flex";
-        if (dashLink) dashLink.style.display = "none";
+
+        if (userDisplay) {
+
+            userDisplay.style.display =
+                "none";
+        }
+
+
+        if (authButtons) {
+
+            authButtons.style.display =
+                "flex";
+        }
+
+
+        if (dashLink) {
+
+            dashLink.style.display =
+                "none";
+        }
     }
 }
 
