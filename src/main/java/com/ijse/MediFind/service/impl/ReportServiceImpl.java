@@ -1,11 +1,12 @@
-/**
- * Created by Nipuna
- * Date : 8/13/2026
- * Time : 6:29 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.service.impl;
 
-public class ReportServiceImpl {
+import com.ijse.MediFind.service.ReportService;
+
+import java.util.Map;
+
+public class ReportServiceImpl implements ReportService {
+    @Override
+    public Map<String, Object> generateReport() {
+        return Map.of();
+    }
 }
