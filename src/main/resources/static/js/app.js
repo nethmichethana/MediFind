@@ -1,179 +1,179 @@
-
-// --- Seed Database Schema ---
-const DEFAULT_CATEGORIES = [
-    { id: 1, name: "Antibiotics", description: "Medicines used to treat bacterial infections." },
-    { id: 2, name: "Analgesics", description: "Pain relief medications." },
-    { id: 3, name: "Cardiovascular", description: "Heart and blood pressure regulation." },
-    { id: 4, name: "Diabetic", description: "Blood sugar control therapies." },
-    { id: 5, name: "Respiratory", description: "Inhalers and asthma support drugs." }
-];
-
-const DEFAULT_MEDICINES = [
-    {
-        id: 1,
-        name: "Amoxicillin 500mg",
-        genericName: "Amoxicillin Trihydrate",
-        brandName: "Amoxil",
-        dosageForm: "Capsule",
-        strength: "500mg",
-        description: "Broad-spectrum penicillin antibiotic used to treat bacterial infections such as pneumonia, tonsillitis, and ear infections.",
-        categoryId: 1,
-        prescriptionRequired: true,
-        active: true
-    },
-    {
-        id: 2,
-        name: "Panadol 500mg",
-        genericName: "Paracetamol",
-        brandName: "Panadol",
-        dosageForm: "Tablet",
-        strength: "500mg",
-        description: "Common analgesic and antipyretic drug. Relieves mild-to-moderate pain, headaches, muscle aches, and fever.",
-        categoryId: 2,
-        prescriptionRequired: false,
-        active: true
-    },
-    {
-        id: 3,
-        name: "Metformin XR 1000mg",
-        genericName: "Metformin Hydrochloride",
-        brandName: "Glucophage XR",
-        dosageForm: "Extended-Release Tablet",
-        strength: "1000mg",
-        description: "Oral anti-diabetic drug specifically formulated to control blood glucose levels in Type 2 Diabetes Mellitus.",
-        categoryId: 4,
-        prescriptionRequired: true,
-        active: true
-    },
-    {
-        id: 4,
-        name: "Lipitor 20mg",
-        genericName: "Atorvastatin Calcium",
-        brandName: "Lipitor",
-        dosageForm: "Tablet",
-        strength: "20mg",
-        description: "HMG-CoA reductase inhibitor (statin) used to lower blood cholesterol levels and prevent cardiovascular disease risks.",
-        categoryId: 3,
-        prescriptionRequired: true,
-        active: true
-    },
-    {
-        id: 5,
-        name: "Ventolin Inhaler",
-        genericName: "Albuterol Sulfate",
-        brandName: "Ventolin",
-        dosageForm: "Inhaler",
-        strength: "100mcg/dose",
-        description: "Fast-acting bronchodilator. Relax muscles in airways to increase airflow, relieving acute asthma attacks or exercise-induced bronchospasm.",
-        categoryId: 5,
-        prescriptionRequired: true,
-        active: true
-    },
-    {
-        id: 6,
-        name: "Nurofen 200mg",
-        genericName: "Ibuprofen",
-        brandName: "Nurofen",
-        dosageForm: "Tablet",
-        strength: "200mg",
-        description: "Non-steroidal anti-inflammatory drug (NSAID) designed to alleviate inflammatory aches, backache, dental pain, and arthritis.",
-        categoryId: 2,
-        prescriptionRequired: false,
-        active: true
-    }
-];
-
-const DEFAULT_PHARMACY = {
-    id: 1,
-    name: "MediFind Super Pharmacy",
-    registrationNumber: "PH-99238-SL",
-    phone: "0112345678",
-    email: "corporate@medifind.com",
-    address: "75 Health Plaza Boulevard",
-    city: "Colombo"
-};
-
-const DEFAULT_BRANCHES = [
-    { id: 1, name: "Colombo Town Center Branch", address: "12 Union Place, Colombo 02", city: "Colombo", phone: "0119876541", email: "towncenter@medifind.com", active: true, latitude: 6.9271, longitude: 79.8612 },
-    { id: 2, name: "Kandy Central Square Branch", address: "44 Dalada Veediya, Kandy", city: "Kandy", phone: "0819876542", email: "kandysquare@medifind.com", active: true, latitude: 7.2906, longitude: 80.6337 },
-    { id: 3, name: "Galle Fort Coastline Branch", address: "55 Church Street, Galle", city: "Galle", phone: "0919876543", email: "gallefort@medifind.com", active: true, latitude: 6.0331, longitude: 80.2170 }
-];
-
-const DEFAULT_BATCHES = [
-    { id: 1, batchNumber: "BAT-AMX-001", quantity: 500, expiryDate: "2027-12-31", manufactureDate: "2025-12-01", unitPrice: 45.0, medicineId: 1 },
-    { id: 2, batchNumber: "BAT-PAN-002", quantity: 2000, expiryDate: "2028-06-30", manufactureDate: "2026-01-10", unitPrice: 5.0, medicineId: 2 },
-    { id: 3, batchNumber: "BAT-MET-003", quantity: 800, expiryDate: "2026-04-15", manufactureDate: "2024-04-15", unitPrice: 28.0, medicineId: 3 }, // Approaching expiry
-    { id: 4, batchNumber: "BAT-LIP-004", quantity: 600, expiryDate: "2027-10-10", manufactureDate: "2025-10-10", unitPrice: 85.0, medicineId: 4 },
-    { id: 5, batchNumber: "BAT-VEN-005", quantity: 150, expiryDate: "2027-02-28", manufactureDate: "2025-02-28", unitPrice: 420.0, medicineId: 5 },
-    { id: 6, batchNumber: "BAT-NUR-006", quantity: 900, expiryDate: "2028-01-15", manufactureDate: "2026-01-15", unitPrice: 15.0, medicineId: 6 }
-];
-
-const DEFAULT_INVENTORY = [
-    // Branch 1 (Colombo) Stock levels
-    { id: 1, branchId: 1, batchId: 1, quantity: 220, reorderLevel: 50, lastUpdated: "2026-08-14T10:00:00" },
-    { id: 2, branchId: 1, batchId: 2, quantity: 950, reorderLevel: 200, lastUpdated: "2026-08-14T10:00:00" },
-    { id: 3, branchId: 1, batchId: 3, quantity: 12, reorderLevel: 30, lastUpdated: "2026-08-14T10:00:00" }, // Low Stock!
-    { id: 4, branchId: 1, batchId: 4, quantity: 110, reorderLevel: 25, lastUpdated: "2026-08-14T10:00:00" },
-    { id: 5, branchId: 1, batchId: 5, quantity: 45, reorderLevel: 10, lastUpdated: "2026-08-14T10:00:00" },
-    
-    // Branch 2 (Kandy) Stock levels
-    { id: 6, branchId: 2, batchId: 1, quantity: 140, reorderLevel: 50, lastUpdated: "2026-08-14T11:00:00" },
-    { id: 7, branchId: 2, batchId: 2, quantity: 600, reorderLevel: 200, lastUpdated: "2026-08-14T11:00:00" },
-    { id: 8, branchId: 2, batchId: 3, quantity: 180, reorderLevel: 30, lastUpdated: "2026-08-14T11:00:00" },
-    { id: 9, branchId: 2, batchId: 5, quantity: 0, reorderLevel: 10, lastUpdated: "2026-08-14T11:00:00" }, // Out of stock
-
-    // Branch 3 (Galle) Stock levels
-    { id: 10, branchId: 3, batchId: 2, quantity: 450, reorderLevel: 100, lastUpdated: "2026-08-14T12:00:00" },
-    { id: 11, branchId: 3, batchId: 4, quantity: 18, reorderLevel: 20, lastUpdated: "2026-08-14T12:00:00" } // Low Stock
-];
-
-const DEFAULT_USERS = [
-    { id: 1, name: "System Admin", email: "admin@medifind.com", password: "password123", role: "ADMIN", status: "ACTIVE" },
-    { id: 2, name: "Nipuna Owner", email: "owner@medifind.com", password: "password123", role: "PHARMACY_ADMIN", status: "ACTIVE" },
-    { id: 3, name: "Colombo Staff A", email: "staff@medifind.com", password: "password123", role: "PHARMACY_STAFF", status: "ACTIVE", branchId: 1 },
-    { id: 4, name: "John Customer", email: "customer@medifind.com", password: "password123", role: "CUSTOMER", status: "ACTIVE" }
-];
-
-const DEFAULT_RESERVATIONS = [
-    {
-        id: 1,
-        reservationDate: "2026-08-14T09:30:00",
-        pickupDate: "2026-08-15T10:00:00",
-        status: "PENDING",
-        notes: "I will bring my medical prescription slip at pickup.",
-        userId: 4,
-        branchId: 1,
-        items: [
-            { id: 1, medicineId: 1, quantity: 20, unitPrice: 45.0, batchNumber: "BAT-AMX-001" }
-        ]
-    }
-];
-
-const DEFAULT_AUDITS = [
-    { id: 1, timestamp: "2026-08-14T09:00:00", user: "system", action: "DATABASE_INITIALIZATION", details: "Seeded initial pharmacy products, user credentials and branch maps." }
-];
-
-const DEFAULT_NOTIFICATIONS = [
-    { id: 1, type: "LOW_STOCK", message: "Colombo Town Center Branch is low on Metformin XR (12 capsules left).", timestamp: "2026-08-14T09:45:00", isRead: false },
-    { id: 2, type: "EXPIRY_WARNING", message: "Batch BAT-MET-003 is expiring on 2026-04-15 (less than 9 months).", timestamp: "2026-08-14T09:50:00", isRead: false }
-];
-
-// Database initialisation
-function initDatabase() {
-    if (!localStorage.getItem("medifind_initialized")) {
-        localStorage.setItem("medifind_categories", JSON.stringify(DEFAULT_CATEGORIES));
-        localStorage.setItem("medifind_medicines", JSON.stringify(DEFAULT_MEDICINES));
-        localStorage.setItem("medifind_pharmacy", JSON.stringify(DEFAULT_PHARMACY));
-        localStorage.setItem("medifind_branches", JSON.stringify(DEFAULT_BRANCHES));
-        localStorage.setItem("medifind_batches", JSON.stringify(DEFAULT_BATCHES));
-        localStorage.setItem("medifind_inventory", JSON.stringify(DEFAULT_INVENTORY));
-        localStorage.setItem("medifind_users", JSON.stringify(DEFAULT_USERS));
-        localStorage.setItem("medifind_reservations", JSON.stringify(DEFAULT_RESERVATIONS));
-        localStorage.setItem("medifind_audits", JSON.stringify(DEFAULT_AUDITS));
-        localStorage.setItem("medifind_notifications", JSON.stringify(DEFAULT_NOTIFICATIONS));
-        localStorage.setItem("medifind_initialized", "true");
-    }
-}
+//
+// // --- Seed Database Schema ---
+// const DEFAULT_CATEGORIES = [
+//     { id: 1, name: "Antibiotics", description: "Medicines used to treat bacterial infections." },
+//     { id: 2, name: "Analgesics", description: "Pain relief medications." },
+//     { id: 3, name: "Cardiovascular", description: "Heart and blood pressure regulation." },
+//     { id: 4, name: "Diabetic", description: "Blood sugar control therapies." },
+//     { id: 5, name: "Respiratory", description: "Inhalers and asthma support drugs." }
+// ];
+//
+// const DEFAULT_MEDICINES = [
+//     {
+//         id: 1,
+//         name: "Amoxicillin 500mg",
+//         genericName: "Amoxicillin Trihydrate",
+//         brandName: "Amoxil",
+//         dosageForm: "Capsule",
+//         strength: "500mg",
+//         description: "Broad-spectrum penicillin antibiotic used to treat bacterial infections such as pneumonia, tonsillitis, and ear infections.",
+//         categoryId: 1,
+//         prescriptionRequired: true,
+//         active: true
+//     },
+//     {
+//         id: 2,
+//         name: "Panadol 500mg",
+//         genericName: "Paracetamol",
+//         brandName: "Panadol",
+//         dosageForm: "Tablet",
+//         strength: "500mg",
+//         description: "Common analgesic and antipyretic drug. Relieves mild-to-moderate pain, headaches, muscle aches, and fever.",
+//         categoryId: 2,
+//         prescriptionRequired: false,
+//         active: true
+//     },
+//     {
+//         id: 3,
+//         name: "Metformin XR 1000mg",
+//         genericName: "Metformin Hydrochloride",
+//         brandName: "Glucophage XR",
+//         dosageForm: "Extended-Release Tablet",
+//         strength: "1000mg",
+//         description: "Oral anti-diabetic drug specifically formulated to control blood glucose levels in Type 2 Diabetes Mellitus.",
+//         categoryId: 4,
+//         prescriptionRequired: true,
+//         active: true
+//     },
+//     {
+//         id: 4,
+//         name: "Lipitor 20mg",
+//         genericName: "Atorvastatin Calcium",
+//         brandName: "Lipitor",
+//         dosageForm: "Tablet",
+//         strength: "20mg",
+//         description: "HMG-CoA reductase inhibitor (statin) used to lower blood cholesterol levels and prevent cardiovascular disease risks.",
+//         categoryId: 3,
+//         prescriptionRequired: true,
+//         active: true
+//     },
+//     {
+//         id: 5,
+//         name: "Ventolin Inhaler",
+//         genericName: "Albuterol Sulfate",
+//         brandName: "Ventolin",
+//         dosageForm: "Inhaler",
+//         strength: "100mcg/dose",
+//         description: "Fast-acting bronchodilator. Relax muscles in airways to increase airflow, relieving acute asthma attacks or exercise-induced bronchospasm.",
+//         categoryId: 5,
+//         prescriptionRequired: true,
+//         active: true
+//     },
+//     {
+//         id: 6,
+//         name: "Nurofen 200mg",
+//         genericName: "Ibuprofen",
+//         brandName: "Nurofen",
+//         dosageForm: "Tablet",
+//         strength: "200mg",
+//         description: "Non-steroidal anti-inflammatory drug (NSAID) designed to alleviate inflammatory aches, backache, dental pain, and arthritis.",
+//         categoryId: 2,
+//         prescriptionRequired: false,
+//         active: true
+//     }
+// ];
+//
+// const DEFAULT_PHARMACY = {
+//     id: 1,
+//     name: "MediFind Super Pharmacy",
+//     registrationNumber: "PH-99238-SL",
+//     phone: "0112345678",
+//     email: "corporate@medifind.com",
+//     address: "75 Health Plaza Boulevard",
+//     city: "Colombo"
+// };
+//
+// const DEFAULT_BRANCHES = [
+//     { id: 1, name: "Colombo Town Center Branch", address: "12 Union Place, Colombo 02", city: "Colombo", phone: "0119876541", email: "towncenter@medifind.com", active: true, latitude: 6.9271, longitude: 79.8612 },
+//     { id: 2, name: "Kandy Central Square Branch", address: "44 Dalada Veediya, Kandy", city: "Kandy", phone: "0819876542", email: "kandysquare@medifind.com", active: true, latitude: 7.2906, longitude: 80.6337 },
+//     { id: 3, name: "Galle Fort Coastline Branch", address: "55 Church Street, Galle", city: "Galle", phone: "0919876543", email: "gallefort@medifind.com", active: true, latitude: 6.0331, longitude: 80.2170 }
+// ];
+//
+// const DEFAULT_BATCHES = [
+//     { id: 1, batchNumber: "BAT-AMX-001", quantity: 500, expiryDate: "2027-12-31", manufactureDate: "2025-12-01", unitPrice: 45.0, medicineId: 1 },
+//     { id: 2, batchNumber: "BAT-PAN-002", quantity: 2000, expiryDate: "2028-06-30", manufactureDate: "2026-01-10", unitPrice: 5.0, medicineId: 2 },
+//     { id: 3, batchNumber: "BAT-MET-003", quantity: 800, expiryDate: "2026-04-15", manufactureDate: "2024-04-15", unitPrice: 28.0, medicineId: 3 }, // Approaching expiry
+//     { id: 4, batchNumber: "BAT-LIP-004", quantity: 600, expiryDate: "2027-10-10", manufactureDate: "2025-10-10", unitPrice: 85.0, medicineId: 4 },
+//     { id: 5, batchNumber: "BAT-VEN-005", quantity: 150, expiryDate: "2027-02-28", manufactureDate: "2025-02-28", unitPrice: 420.0, medicineId: 5 },
+//     { id: 6, batchNumber: "BAT-NUR-006", quantity: 900, expiryDate: "2028-01-15", manufactureDate: "2026-01-15", unitPrice: 15.0, medicineId: 6 }
+// ];
+//
+// const DEFAULT_INVENTORY = [
+//     // Branch 1 (Colombo) Stock levels
+//     { id: 1, branchId: 1, batchId: 1, quantity: 220, reorderLevel: 50, lastUpdated: "2026-08-14T10:00:00" },
+//     { id: 2, branchId: 1, batchId: 2, quantity: 950, reorderLevel: 200, lastUpdated: "2026-08-14T10:00:00" },
+//     { id: 3, branchId: 1, batchId: 3, quantity: 12, reorderLevel: 30, lastUpdated: "2026-08-14T10:00:00" }, // Low Stock!
+//     { id: 4, branchId: 1, batchId: 4, quantity: 110, reorderLevel: 25, lastUpdated: "2026-08-14T10:00:00" },
+//     { id: 5, branchId: 1, batchId: 5, quantity: 45, reorderLevel: 10, lastUpdated: "2026-08-14T10:00:00" },
+//
+//     // Branch 2 (Kandy) Stock levels
+//     { id: 6, branchId: 2, batchId: 1, quantity: 140, reorderLevel: 50, lastUpdated: "2026-08-14T11:00:00" },
+//     { id: 7, branchId: 2, batchId: 2, quantity: 600, reorderLevel: 200, lastUpdated: "2026-08-14T11:00:00" },
+//     { id: 8, branchId: 2, batchId: 3, quantity: 180, reorderLevel: 30, lastUpdated: "2026-08-14T11:00:00" },
+//     { id: 9, branchId: 2, batchId: 5, quantity: 0, reorderLevel: 10, lastUpdated: "2026-08-14T11:00:00" }, // Out of stock
+//
+//     // Branch 3 (Galle) Stock levels
+//     { id: 10, branchId: 3, batchId: 2, quantity: 450, reorderLevel: 100, lastUpdated: "2026-08-14T12:00:00" },
+//     { id: 11, branchId: 3, batchId: 4, quantity: 18, reorderLevel: 20, lastUpdated: "2026-08-14T12:00:00" } // Low Stock
+// ];
+//
+// const DEFAULT_USERS = [
+//     { id: 1, name: "System Admin", email: "admin@medifind.com", password: "password123", role: "ADMIN", status: "ACTIVE" },
+//     { id: 2, name: "Nipuna Owner", email: "owner@medifind.com", password: "password123", role: "PHARMACY_ADMIN", status: "ACTIVE" },
+//     { id: 3, name: "Colombo Staff A", email: "staff@medifind.com", password: "password123", role: "PHARMACY_STAFF", status: "ACTIVE", branchId: 1 },
+//     { id: 4, name: "John Customer", email: "customer@medifind.com", password: "password123", role: "CUSTOMER", status: "ACTIVE" }
+// ];
+//
+// const DEFAULT_RESERVATIONS = [
+//     {
+//         id: 1,
+//         reservationDate: "2026-08-14T09:30:00",
+//         pickupDate: "2026-08-15T10:00:00",
+//         status: "PENDING",
+//         notes: "I will bring my medical prescription slip at pickup.",
+//         userId: 4,
+//         branchId: 1,
+//         items: [
+//             { id: 1, medicineId: 1, quantity: 20, unitPrice: 45.0, batchNumber: "BAT-AMX-001" }
+//         ]
+//     }
+// ];
+//
+// const DEFAULT_AUDITS = [
+//     { id: 1, timestamp: "2026-08-14T09:00:00", user: "system", action: "DATABASE_INITIALIZATION", details: "Seeded initial pharmacy products, user credentials and branch maps." }
+// ];
+//
+// const DEFAULT_NOTIFICATIONS = [
+//     { id: 1, type: "LOW_STOCK", message: "Colombo Town Center Branch is low on Metformin XR (12 capsules left).", timestamp: "2026-08-14T09:45:00", isRead: false },
+//     { id: 2, type: "EXPIRY_WARNING", message: "Batch BAT-MET-003 is expiring on 2026-04-15 (less than 9 months).", timestamp: "2026-08-14T09:50:00", isRead: false }
+// ];
+//
+// // Database initialisation
+// function initDatabase() {
+//     if (!localStorage.getItem("medifind_initialized")) {
+//         localStorage.setItem("medifind_categories", JSON.stringify(DEFAULT_CATEGORIES));
+//         localStorage.setItem("medifind_medicines", JSON.stringify(DEFAULT_MEDICINES));
+//         localStorage.setItem("medifind_pharmacy", JSON.stringify(DEFAULT_PHARMACY));
+//         localStorage.setItem("medifind_branches", JSON.stringify(DEFAULT_BRANCHES));
+//         localStorage.setItem("medifind_batches", JSON.stringify(DEFAULT_BATCHES));
+//         localStorage.setItem("medifind_inventory", JSON.stringify(DEFAULT_INVENTORY));
+//         localStorage.setItem("medifind_users", JSON.stringify(DEFAULT_USERS));
+//         localStorage.setItem("medifind_reservations", JSON.stringify(DEFAULT_RESERVATIONS));
+//         localStorage.setItem("medifind_audits", JSON.stringify(DEFAULT_AUDITS));
+//         localStorage.setItem("medifind_notifications", JSON.stringify(DEFAULT_NOTIFICATIONS));
+//         localStorage.setItem("medifind_initialized", "true");
+//     }
+// }
 
 // ============================================================
 // GLOBAL APPLICATION STATE
@@ -276,6 +276,136 @@ function selectCategory(category) {
             });
     }
 
+    // ============================================================
+// LOAD MEDICINE CATEGORIES FROM BACKEND
+// ============================================================
+
+    async function loadMedicineCategories() {
+
+        const categoryTabs =
+            document.getElementById("category-tabs");
+
+        if (!categoryTabs) {
+            return;
+        }
+
+        try {
+
+            const response = await apiFetch(
+                "/v1/medicine-categories",
+                "GET"
+            );
+
+            console.log(
+                "Medicine Categories API Response:",
+                response
+            );
+
+            if (
+                !response ||
+                response.status !== 200
+            ) {
+
+                console.error(
+                    "Failed to load medicine categories:",
+                    response
+                );
+
+                return;
+            }
+
+            const categories = response.body;
+
+            if (!Array.isArray(categories)) {
+
+                console.error(
+                    "Invalid medicine categories response:",
+                    categories
+                );
+
+                return;
+            }
+
+            // ----------------------------------------------------
+            // Clear existing dynamic category buttons
+            // ----------------------------------------------------
+
+            categoryTabs.innerHTML = "";
+
+            // ----------------------------------------------------
+            // ALL CATEGORIES button
+            // ----------------------------------------------------
+
+            const allButton =
+                document.createElement("button");
+
+            allButton.type = "button";
+
+            allButton.className =
+                "tab-btn active";
+
+            allButton.textContent =
+                "All Categories";
+
+            allButton.onclick = function () {
+
+                selectCategory("ALL");
+
+            };
+
+            categoryTabs.appendChild(allButton);
+
+            // ----------------------------------------------------
+            // Backend categories
+            // ----------------------------------------------------
+
+            categories.forEach(category => {
+
+                const button =
+                    document.createElement("button");
+
+                button.type = "button";
+
+                button.className =
+                    "tab-btn";
+
+                button.textContent =
+                    category.name;
+
+                button.dataset.categoryId =
+                    category.id;
+
+                button.onclick = function () {
+
+                    selectCategory(
+                        category.name
+                    );
+
+                };
+
+                categoryTabs.appendChild(button);
+
+            });
+
+            console.log(
+                "Medicine categories loaded:",
+                categories
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Error loading medicine categories:",
+                error
+            );
+
+            showToast(
+                "Unable to load medicine categories.",
+                "danger"
+            );
+        }
+    }
+
 
     // Re-render medicines
 
@@ -330,7 +460,6 @@ async function apiFetch(endpoint, method = "GET", body = null) {
             options
         );
 
-        // Response එක JSON ද කියලා බලනවා
         const contentType = response.headers.get("content-type");
 
         let data = null;
@@ -529,19 +658,6 @@ async function performLogin(
     }
 
 
-    /*
-     * Expected LoginResDTO:
-     *
-     * {
-     *     token: "...",
-     *     userId: 1,
-     *     name: "Admin",
-     *     email: "admin@medifind.com",
-     *     role: "ADMIN"
-     * }
-     */
-
-
     const token = loginData.token;
 
 
@@ -736,23 +852,6 @@ async function handleSignup() {
     // --------------------------------------------------------
     // Customer Role
     // --------------------------------------------------------
-
-    /*
-     * IMPORTANT:
-     *
-     * UserReqDTO requires:
-     *
-     * name
-     * email
-     * password
-     * phone
-     * status
-     * roleId
-     *
-     * Customer role ID එක database එකෙන් dynamically
-     * find කරනවා.
-     */
-
 
     showToast(
         "Checking customer role...",

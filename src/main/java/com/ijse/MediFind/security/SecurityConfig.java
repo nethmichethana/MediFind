@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/v1/medicine-categories/**").hasRole("ADMIN")
                         // Only ADMIN can delete category
                         .requestMatchers(HttpMethod.DELETE, "/v1/medicine-categories/**").hasRole("ADMIN")
+
                         .requestMatchers(HttpMethod.GET, "/v1/reports")
                         .hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
