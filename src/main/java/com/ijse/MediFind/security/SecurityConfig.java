@@ -38,6 +38,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/roles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/roles").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/v1/users").permitAll()
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                         .requestMatchers(HttpMethod.GET,"/v1/auth/users").hasAnyRole("CUSTOMER")
                         .anyRequest().authenticated()

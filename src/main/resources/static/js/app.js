@@ -174,6 +174,122 @@ function initDatabase() {
         localStorage.setItem("medifind_initialized", "true");
     }
 }
+
+// ============================================================
+// GLOBAL APPLICATION STATE
+// ============================================================
+
+let appState = {
+    selectedCategory: "ALL",
+    cart: [],
+    currentUser: null
+};
+
+
+// ============================================================
+// SECTION NAVIGATION
+// ============================================================
+
+function showSection(sectionName) {
+
+    const sections = [
+        "login",
+        "signup",
+        "catalog",
+        "reservations"
+    ];
+
+    sections.forEach(section => {
+
+        const sectionElement =
+            document.getElementById(section + "-section");
+
+        if (sectionElement) {
+            sectionElement.style.display = "none";
+        }
+    });
+
+
+    const selectedSection =
+        document.getElementById(sectionName + "-section");
+
+    if (selectedSection) {
+
+        selectedSection.style.display = "block";
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    } else {
+
+        console.warn(
+            "Section not found:",
+            sectionName
+        );
+    }
+}
+
+
+// ============================================================
+// CATEGORY SELECTION
+// ============================================================
+
+function selectCategory(category) {
+
+    appState.selectedCategory = category;
+
+
+    // Update active category button
+
+    const categoryTabs =
+        document.getElementById("category-tabs");
+
+    if (categoryTabs) {
+
+        categoryTabs
+            .querySelectorAll(".tab-btn")
+            .forEach(button => {
+
+                button.classList.remove("active");
+
+                const buttonText =
+                    button.textContent
+                        .trim()
+                        .toUpperCase();
+
+                if (
+                    category === "ALL" &&
+                    buttonText === "ALL CATEGORIES"
+                ) {
+
+                    button.classList.add("active");
+
+                } else if (
+                    buttonText ===
+                    category.toUpperCase()
+                ) {
+
+                    button.classList.add("active");
+                }
+            });
+    }
+
+
+    // Re-render medicines
+
+    if (typeof filterMedicines === "function") {
+
+        filterMedicines();
+
+    } else if (
+        typeof renderMedicineCatalog === "function"
+    ) {
+
+        renderMedicineCatalog();
+    }
+}
 // ============================================================
 // BACKEND API CONFIGURATION
 // ============================================================
