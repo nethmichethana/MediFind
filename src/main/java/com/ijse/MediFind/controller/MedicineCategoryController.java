@@ -13,13 +13,13 @@ import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
 @RestController
-@RequestMapping
+@RequestMapping("/v1/medicine-categories")
 @RequiredArgsConstructor
 public class MedicineCategoryController {
 
     private final MedicineCategoryService medicineCategoryService;
 
-    @PostMapping("/medicine-categories")
+    @PostMapping
     public CommonResponse createCategory(
             @RequestBody MedicineCategoryReqDTO medicineCategoryReqDTO) {
 
@@ -33,7 +33,7 @@ public class MedicineCategoryController {
         );
     }
 
-    @GetMapping("/medicine-categories/{id}")
+    @GetMapping("/{id}")
     public CommonResponse getCategoryById(
             @PathVariable Long id) {
 
@@ -47,7 +47,7 @@ public class MedicineCategoryController {
         );
     }
 
-    @GetMapping("/medicine-categories")
+    @GetMapping
     public CommonResponse getAllCategories() {
 
         List<MedicineCategoryResDTO> categoryList =
@@ -60,7 +60,7 @@ public class MedicineCategoryController {
         );
     }
 
-    @PutMapping("/medicine-categories/{id}")
+    @PutMapping("/{id}")
     public CommonResponse updateCategory(
             @PathVariable Long id,
             @RequestBody MedicineCategoryReqDTO medicineCategoryReqDTO) {
@@ -78,7 +78,7 @@ public class MedicineCategoryController {
         );
     }
 
-    @DeleteMapping("/medicine-categories/{id}")
+    @DeleteMapping("/{id}")
     public CommonResponse deleteCategory(
             @PathVariable Long id) {
 
