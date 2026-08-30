@@ -13,7 +13,7 @@ import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
 @RestController
-@RequestMapping
+@RequestMapping("/v1/reports")
 @RequiredArgsConstructor
 public class ReportController {
 
