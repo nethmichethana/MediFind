@@ -40,6 +40,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/users").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/medicine-categories").permitAll()
+
+                        // Only ADMIN can create category
+                        .requestMatchers(HttpMethod.POST, "/v1/medicine-categories").hasRole("ADMIN")
+                        // Only ADMIN can update category
+                        .requestMatchers(HttpMethod.PUT, "/v1/medicine-categories/**").hasRole("ADMIN")
+                        // Only ADMIN can delete category
+                        .requestMatchers(HttpMethod.DELETE, "/v1/medicine-categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/v1/reports")
                         .hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
