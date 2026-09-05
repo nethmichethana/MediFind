@@ -20,7 +20,7 @@ import java.util.List;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class MedicineBatchServiceImpl implements MedicineBatchService {
+public class  MedicineBatchServiceImpl implements MedicineBatchService {
 
     private final MedicineBatchRepository medicineBatchRepository;
     private final MedicineRepository medicineRepository;
