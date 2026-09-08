@@ -113,57 +113,19 @@
 
             </div>
 
-            <input
-                    type="hidden"
-                    id="category-edit-ids">
 
+            <input type="hidden" id="category-edit-id">
             <div class="form-group">
-
-                <label
-                        class="form-label"
-                        for="category-name">
-                    Category Name
-                </label>
-
-                <input
-                        type="text"
-                        class="form-control"
-                        id="category-names"
-                        placeholder="e.g. Analgesics">
-
+                <label class="form-label" for="category-name">Category Name</label>
+                <input type="text" class="form-control" id="category-name" placeholder="e.g. Analgesics">
             </div>
-
             <div class="form-group">
-
-                <label
-                        class="form-label"
-                        for="category-desc">
-                    Description
-                </label>
-
-                <textarea
-                        class="form-control"
-                        id="category-desk"
-                        rows="3"
-                        placeholder="Provide category purpose...">
-            </textarea>
-
+                <label class="form-label" for="category-desc">Description</label>
+                <textarea class="form-control" id="category-desc" rows="3" placeholder="Provide category purpose..."></textarea>
             </div>
-
             <div class="modal-actions">
-
-                <button
-                        class="btn btn-secondary"
-                        onclick="closeModal('category-modal')">
-                    Cancel
-                </button>
-
-                <button
-                        class="btn btn-primary"
-                        onclick="saveCategory()">
-                    Save Category
-                </button>
-
+                <button class="btn btn-secondary" onclick="closeModal('category-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCategory()">Save Category</button>
             </div>
 
         </div>
@@ -437,19 +399,7 @@
         </div>
 
     </div>
-            <input type="hidden" id="category-edit-id">
-            <div class="form-group">
-                <label class="form-label" for="category-name">Category Name</label>
-                <input type="text" class="form-control" id="category-name" placeholder="e.g. Analgesics">
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="category-desc">Description</label>
-                <textarea class="form-control" id="category-desc" rows="3" placeholder="Provide category purpose..."></textarea>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeModal('category-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCategory()">Save Category</button>
-            </div>
+
         </div>
     </div>
 
@@ -457,9 +407,10 @@
     <div class="modal-backdrop" id="pharmacy-modal">
         <div class="modal glass-card">
             <div class="modal-header">
-                <h2>Register Pharmacy Corporation</h2>
+                <h2 id="pharmacy-modal-title">Register Pharmacy Corporation</h2>
                 <button class="close-btn" onclick="closeModal('pharmacy-modal')">&times;</button>
             </div>
+            <input type="hidden" id="pharmacy-edit-id">
             <div class="form-group">
                 <label class="form-label" for="pharmacy-name">Pharmacy Corporate Name</label>
                 <input type="text" class="form-control" id="pharmacy-name" placeholder="e.g. MediFind Health PLC">
@@ -468,27 +419,29 @@
                 <label class="form-label" for="pharmacy-reg">Registration Number</label>
                 <input type="text" class="form-control" id="pharmacy-reg" placeholder="PH-10029-SL">
             </div>
+
             <div class="form-group">
                 <label class="form-label" for="pharmacy-phone">Contact Phone</label>
                 <input type="text" class="form-control" id="pharmacy-phone" placeholder="0115566778">
             </div>
+
             <div class="form-group">
                 <label class="form-label" for="pharmacy-email">Official Corporate Email</label>
                 <input type="email" class="form-control" id="pharmacy-email" placeholder="hq@corporate.com">
             </div>
+
             <div class="form-group">
                 <label class="form-label" for="pharmacy-owner">Assign Owner User Account</label>
-                <select class="form-control" id="pharmacy-owner">
-                    <!-- User list dynamic -->
-                </select>
+
+                <select class="form-control" id="pharmacy-owner"></select>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeModal('pharmacy-modal')">Cancel</button>
+                <button class="btn btn-secondary" onclick="closeModal('pharmacy-modal')">Cancel
+                </button>
                 <button class="btn btn-primary" onclick="savePharmacy()">Register Corporation</button>
             </div>
         </div>
     </div>
-
     <!-- Modal: Branch CRUD -->
     <div class="modal-backdrop" id="branch-modal">
         <div class="modal glass-card">

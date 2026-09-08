@@ -951,6 +951,7 @@ tr:hover td {
     animation: fadeIn 0.2s ease-out;
 }
 
+
 .modal {
     max-height: 90vh;
     overflow-y: auto;
