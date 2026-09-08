@@ -952,6 +952,8 @@ tr:hover td {
 }
 
 .modal {
+    max-height: 90vh;
+    overflow-y: auto;
     width: 90%;
     max-width: 550px;
     padding: 2.25rem;
@@ -971,7 +973,7 @@ tr:hover td {
     margin-top: 2rem;
 }
 
-/* AI Copilot Persistent Chat Box (Fixed overlay in portal) */
+
 .ai-chatbot {
     position: fixed;
     bottom: 2rem;

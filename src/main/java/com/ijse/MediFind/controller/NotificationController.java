@@ -1,10 +1,9 @@
 package com.ijse.MediFind.controller;
 
 
+import com.ijse.MediFind.constants.CommonResponse;
 import com.ijse.MediFind.dto.request.NotificationReqDTO;
-import com.ijse.MediFind.dto.response.CommonResponse;
 import com.ijse.MediFind.dto.response.NotificationResDTO;
-import com.ijse.MediFind.entity.Notification;
 import com.ijse.MediFind.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +14,7 @@ import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
 @RestController
-@RequestMapping
+@RequestMapping("/v1")
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -24,7 +23,7 @@ public class NotificationController {
     @PostMapping("/notifications")
     public CommonResponse createNotification(@RequestBody NotificationReqDTO notificationReqDTO) {
 
-        NotificationResDTO notification =  notificationService.createNotification( notificationReqDTO);
+        NotificationResDTO notification = notificationService.createNotification(notificationReqDTO);
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
@@ -53,7 +52,7 @@ public class NotificationController {
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
-                (NotificationResDTO) notificationList,
+                notificationList,
                 SUCCESS_MESSAGE
         );
     }
@@ -69,6 +68,7 @@ public class NotificationController {
                 SUCCESS_MESSAGE
         );
     }
+
     @DeleteMapping("/notifications/{id}")
     public CommonResponse deleteNotification(
             @PathVariable Long id) {

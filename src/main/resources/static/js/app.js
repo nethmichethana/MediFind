@@ -10,6 +10,10 @@ const API_BASE_URL = "http://localhost:8080";
 // ============================================================
 
 let appState = {
+    selectedCategory: "ALL",
+    medicines: [],
+    categories: [],
+    cart: [],
     currentUser: null
 };
 
@@ -1119,20 +1123,153 @@ function selectCategory(categoryId, tabElement) {
 }
 
 
+
+// ============================================================
+// LOAD MEDICINES FROM BACKEND
+// ============================================================
+
+async function loadMedicinesFromBackend() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/medicines",
+                "GET"
+            );
+
+
+        console.log(
+            "Medicines API Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load medicines:",
+                response
+            );
+
+            showToast(
+                response?.message ||
+                "Unable to load medicines.",
+                "danger"
+            );
+
+            return [];
+        }
+
+
+        let medicines =
+            response.body || [];
+
+
+        if (!Array.isArray(medicines)) {
+
+            if (
+                medicines &&
+                Array.isArray(
+                    medicines.content
+                )
+            ) {
+
+                medicines =
+                    medicines.content;
+
+            } else {
+
+                medicines = [];
+            }
+        }
+
+
+        console.log(
+            "Medicines from Backend:",
+            medicines
+        );
+
+
+        return medicines;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading medicines:",
+            error
+        );
+
+        showToast(
+            "Unable to load medicines.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+
 // ============================================================
 // APPLICATION INITIALIZATION
 // ============================================================
 
 document.addEventListener(
     "DOMContentLoaded",
-    function () {
+    async function () {
 
         console.log(
             "MediFind application initialized."
         );
 
+        // ----------------------------------------------------
+        // Load saved login session
+        // ----------------------------------------------------
+
         loadSavedSession();
-        loadCatalogCategories();
+
+        // ----------------------------------------------------
+        // Load medicine categories from backend
+        // ----------------------------------------------------
+
+        await loadCatalogCategories();
+
+        // ----------------------------------------------------
+        // Load medicines from backend
+        // ----------------------------------------------------
+
+        const medicines =
+            await loadMedicinesFromBackend();
+
+        // Save medicines into application state
+        appState.medicines =
+            medicines;
+
+        console.log(
+            "Customer medicines loaded:",
+            appState.medicines
+        );
+
+        // ----------------------------------------------------
+        // Render medicines on Customer page
+        // ----------------------------------------------------
+
+        if (
+            typeof renderMedicineCatalog === "function"
+        ) {
+
+            renderMedicineCatalog();
+
+        } else if (
+            typeof filterMedicines === "function"
+        ) {
+
+            filterMedicines();
+
+        }
 
     }
 );

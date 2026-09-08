@@ -91,14 +91,352 @@
         </main>
     </div>
 
-    <!-- DYNAMIC FORM MODALS -->
-    <!-- Modal: Category CRUD -->
+    <!-- =========================================================
+     MODAL: CATEGORY CRUD
+     ========================================================= -->
+
     <div class="modal-backdrop" id="category-modal">
+
         <div class="modal glass-card">
+
             <div class="modal-header">
-                <h2 id="category-modal-title">Create Medicine Category</h2>
-                <button class="close-btn" onclick="closeModal('category-modal')">&times;</button>
+
+                <h2 id="category-modal-title">
+                    Create Medicine Category
+                </h2>
+
+                <button
+                        class="close-btn"
+                        onclick="closeModal('category-modal')">
+                    &times;
+                </button>
+
             </div>
+
+            <input
+                    type="hidden"
+                    id="category-edit-ids">
+
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="category-name">
+                    Category Name
+                </label>
+
+                <input
+                        type="text"
+                        class="form-control"
+                        id="category-names"
+                        placeholder="e.g. Analgesics">
+
+            </div>
+
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="category-desc">
+                    Description
+                </label>
+
+                <textarea
+                        class="form-control"
+                        id="category-desk"
+                        rows="3"
+                        placeholder="Provide category purpose...">
+            </textarea>
+
+            </div>
+
+            <div class="modal-actions">
+
+                <button
+                        class="btn btn-secondary"
+                        onclick="closeModal('category-modal')">
+                    Cancel
+                </button>
+
+                <button
+                        class="btn btn-primary"
+                        onclick="saveCategory()">
+                    Save Category
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         MODAL: MEDICINE CRUD
+         ========================================================= -->
+
+    <div class="modal-backdrop" id="medicine-modal">
+
+        <div class="modal glass-card">
+
+            <div class="modal-header">
+
+                <h2 id="medicine-modal-title">
+                    Create Medicine
+                </h2>
+
+                <button
+                        class="close-btn"
+                        onclick="closeModal('medicine-modal')">
+                    &times;
+                </button>
+
+            </div>
+
+            <!-- Hidden ID -->
+            <input
+                    type="hidden"
+                    id="medicine-edit-id">
+
+
+            <!-- Medicine Name -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-name">
+                    Medicine Name
+                </label>
+
+                <input
+                        type="text"
+                        class="form-control"
+                        id="medicine-name"
+                        placeholder="e.g. Amoxicillin 500mg">
+
+            </div>
+
+
+            <!-- Generic Name -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-generic-name">
+                    Generic Name
+                </label>
+
+                <input
+                        type="text"
+                        class="form-control"
+                        id="medicine-generic-name"
+                        placeholder="e.g. Amoxicillin">
+
+            </div>
+
+
+            <!-- Brand Name -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-brand-name">
+                    Brand Name
+                </label>
+
+                <input
+                        type="text"
+                        class="form-control"
+                        id="medicine-brand-name"
+                        placeholder="e.g. Amoxil">
+
+            </div>
+
+
+            <!-- Dosage Form -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-dosage-form">
+                    Dosage Form
+                </label>
+
+                <select
+                        class="form-control"
+                        id="medicine-dosage-form">
+
+                    <option value="">
+                        Select dosage form
+                    </option>
+
+                    <option value="Tablet">
+                        Tablet
+                    </option>
+
+                    <option value="Capsule">
+                        Capsule
+                    </option>
+
+                    <option value="Syrup">
+                        Syrup
+                    </option>
+
+                    <option value="Injection">
+                        Injection
+                    </option>
+
+                    <option value="Cream">
+                        Cream
+                    </option>
+
+                    <option value="Inhaler">
+                        Inhaler
+                    </option>
+
+                    <option value="Drops">
+                        Drops
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- Strength -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-strength">
+                    Strength
+                </label>
+
+                <input
+                        type="text"
+                        class="form-control"
+                        id="medicine-strength"
+                        placeholder="e.g. 500mg">
+
+            </div>
+
+
+            <!-- Category -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-category-id">
+                    Medicine Category
+                </label>
+
+                <select
+                        class="form-control"
+                        id="medicine-category-id">
+
+                    <option value="">
+                        Select category
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- Description -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-description">
+                    Description
+                </label>
+
+                <textarea
+                        class="form-control"
+                        id="medicine-description"
+                        rows="3"
+                        placeholder="Medicine description...">
+            </textarea>
+
+            </div>
+
+
+            <!-- Prescription -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-prescription-required">
+                    Prescription Required
+                </label>
+
+                <select
+                        class="form-control"
+                        id="medicine-prescription-required">
+
+                    <option value="false">
+                        No
+                    </option>
+
+                    <option value="true">
+                        Yes
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- Active -->
+            <div class="form-group">
+
+                <label
+                        class="form-label"
+                        for="medicine-active">
+                    Status
+                </label>
+
+                <select
+                        class="form-control"
+                        id="medicine-active">
+
+                    <option value="true">
+                        Active
+                    </option>
+
+                    <option value="false">
+                        Inactive
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- Actions -->
+            <div class="modal-actions"
+                 style="display: flex !important; justify-content: flex-end !important; gap: 10px !important; margin-top: 20px !important;">
+
+                <button
+                        type="button"
+                        class="btn btn-secondary"
+                        onclick="closeModal('medicine-modal')">
+                    Cancel
+                </button>
+
+                <button
+                        type="button"
+                        class="btn btn-primary"
+                        onclick="saveMedicine()">
+                    Save Medicine
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
             <input type="hidden" id="category-edit-id">
             <div class="form-group">
                 <label class="form-label" for="category-name">Category Name</label>

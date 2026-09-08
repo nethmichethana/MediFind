@@ -1,7 +1,7 @@
 package com.ijse.MediFind.controller;
 
+import com.ijse.MediFind.constants.CommonResponse;
 import com.ijse.MediFind.dto.request.InventoryReqDTO;
-import com.ijse.MediFind.dto.response.CommonResponse;
 import com.ijse.MediFind.dto.response.InventoryResDTO;
 import com.ijse.MediFind.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +13,7 @@ import static com.ijse.MediFind.constants.ResponseCode.OPERATION_SUCCESS;
 import static com.ijse.MediFind.constants.ResponseMessage.SUCCESS_MESSAGE;
 
 @RestController
-@RequestMapping
+@RequestMapping("/v1")
 @RequiredArgsConstructor
 public class InventoryController {
 
@@ -22,14 +22,15 @@ public class InventoryController {
     @PostMapping("/inventories")
     public CommonResponse createInventory(@RequestBody InventoryReqDTO inventoryReqDTO) {
 
-        InventoryResDTO inventoryResDTO =  inventoryService.createInventory(inventoryReqDTO);
+        InventoryResDTO inventoryResDTO = inventoryService.createInventory(inventoryReqDTO);
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
+                inventoryResDTO,
                 SUCCESS_MESSAGE
-
         );
     }
+
     @GetMapping("/inventories/{id}")
     public CommonResponse getInventoryById(
             @PathVariable Long id) {
@@ -39,6 +40,7 @@ public class InventoryController {
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
+                inventory,
                 SUCCESS_MESSAGE
         );
     }
@@ -51,6 +53,7 @@ public class InventoryController {
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
+                inventoryList,
                 SUCCESS_MESSAGE
         );
     }
@@ -68,6 +71,7 @@ public class InventoryController {
 
         return new CommonResponse(
                 OPERATION_SUCCESS,
+                inventory,
                 SUCCESS_MESSAGE
         );
     }
@@ -83,6 +87,5 @@ public class InventoryController {
                 SUCCESS_MESSAGE
         );
     }
-
 
 }

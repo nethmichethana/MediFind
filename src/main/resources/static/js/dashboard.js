@@ -412,6 +412,1122 @@ async function deleteCategory(id) {
     }
 }
 
+
+// ============================================================
+// MEDICINE - GET ALL
+// ============================================================
+
+async function loadDashboardMedicines() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/medicines",
+                "GET"
+            );
+
+        console.log(
+            "Dashboard Medicines API Response:",
+            response
+        );
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load medicines:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load medicines.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let medicines =
+            response.body;
+
+        if (!Array.isArray(medicines)) {
+
+            if (
+                medicines &&
+                Array.isArray(medicines.content)
+            ) {
+
+                medicines =
+                    medicines.content;
+
+            } else {
+
+                medicines = [];
+            }
+        }
+
+        console.log(
+            "Medicines from Backend:",
+            medicines
+        );
+
+        return medicines;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading medicines:",
+            error
+        );
+
+        showToast(
+            "Error loading medicines.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+// ============================================================
+// RENDER MEDICINE TABLE
+// ============================================================
+
+function renderMedicineTable(medicines, categories = []) {
+
+    const head =
+        document.getElementById(
+            "workspace-table-head"
+        );
+
+    const body =
+        document.getElementById(
+            "workspace-table-body"
+        );
+
+    const panelTitle =
+        document.getElementById(
+            "table-panel-title"
+        );
+
+    if (!head || !body) {
+
+        console.error(
+            "Medicine table elements not found."
+        );
+
+        return;
+    }
+
+    if (panelTitle) {
+
+        panelTitle.textContent =
+            "Medicine Catalog";
+    }
+
+    head.innerHTML = `
+        <tr>
+            <th style="width:60px;">ID</th>
+            <th>Medicine Name</th>
+            <th>Generic Name</th>
+            <th>Brand</th>
+            <th>Form</th>
+            <th>Strength</th>
+            <th>Category</th>
+            <th>Prescription</th>
+            <th>Status</th>
+            <th style="width:170px; text-align:right;">
+                Actions
+            </th>
+        </tr>
+    `;
+
+    body.innerHTML = "";
+
+    if (
+        !Array.isArray(medicines) ||
+        medicines.length === 0
+    ) {
+
+        body.innerHTML = `
+            <tr>
+                <td
+                    colspan="10"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div
+                        style="
+                            margin-bottom:0.5rem;
+                            font-size:1.1rem;
+                            font-weight:500;
+                        "
+                    >
+                        No medicines found
+                    </div>
+
+                    <div
+                        style="font-size:0.85rem;"
+                    >
+                        Click "Add Medicine" to create
+                        your first medicine.
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    medicines.forEach(medicine => {
+
+        const row =
+            document.createElement("tr");
+
+        const category =
+            categories.find(
+                category =>
+                    Number(category.id) ===
+                    Number(medicine.categoryId)
+            );
+
+        const categoryName =
+            category
+                ? category.name
+                : "Unknown";
+
+        const prescription =
+            medicine.prescriptionRequired
+                ? "Required"
+                : "Not Required";
+
+        const status =
+            medicine.active
+                ? "Active"
+                : "Inactive";
+
+        row.innerHTML = `
+            <td>
+                #${escapeHtml(medicine.id)}
+            </td>
+
+            <td>
+                <strong>
+                    ${escapeHtml(medicine.name)}
+                </strong>
+            </td>
+
+            <td>
+                ${escapeHtml(
+            medicine.genericName || ""
+        )}
+            </td>
+
+            <td>
+                ${escapeHtml(
+            medicine.brandName || ""
+        )}
+            </td>
+
+            <td>
+                ${escapeHtml(
+            medicine.dosageForm || ""
+        )}
+            </td>
+
+            <td>
+                ${escapeHtml(
+            medicine.strength || ""
+        )}
+            </td>
+
+            <td>
+                ${escapeHtml(categoryName)}
+            </td>
+
+            <td>
+                <span
+                    class="badge ${
+            medicine.prescriptionRequired
+                ? "badge-danger"
+                : "badge-success"
+        }"
+                >
+                    ${prescription}
+                </span>
+            </td>
+
+            <td>
+                <span
+                    class="badge ${
+            medicine.active
+                ? "badge-success"
+                : "badge-danger"
+        }"
+                >
+                    ${status}
+                </span>
+            </td>
+
+            <td style="text-align:right;">
+
+                <button
+                    class="btn btn-secondary"
+                    style="
+                        padding:0.3rem 0.65rem;
+                        font-size:0.75rem;
+                        margin-right:6px;
+                    "
+                    onclick="
+                        editMedicine(${medicine.id})
+                    "
+                >
+                    Edit
+                </button>
+
+                <button
+                    class="btn btn-secondary"
+                    style="
+                        padding:0.3rem 0.65rem;
+                        font-size:0.75rem;
+                        color:var(--accent-rose);
+                        border-color:
+                        rgba(244,63,94,0.3);
+                    "
+                    onclick="
+                        deleteMedicine(${medicine.id})
+                    "
+                >
+                    Delete
+                </button>
+
+            </td>
+        `;
+
+        body.appendChild(row);
+    });
+}
+
+// ============================================================
+// MEDICINE STATISTICS
+// ============================================================
+
+function renderMedicineStats(medicines) {
+
+    const statsContainer =
+        document.getElementById(
+            "workspace-stats"
+        );
+
+    if (!statsContainer) {
+        return;
+    }
+
+    const list =
+        Array.isArray(medicines)
+            ? medicines
+            : [];
+
+    const total =
+        list.length;
+
+    const active =
+        list.filter(
+            medicine => medicine.active === true
+        ).length;
+
+    const prescription =
+        list.filter(
+            medicine =>
+                medicine.prescriptionRequired === true
+        ).length;
+
+    statsContainer.innerHTML = `
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+
+                <span class="stat-title">
+                    Total Medicines
+                </span>
+
+                <div class="stat-icon">
+                    💊
+                </div>
+
+            </div>
+
+            <div class="stat-val">
+                ${total}
+            </div>
+
+            <span class="stat-desc">
+                Medicines loaded from database
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+
+                <span class="stat-title">
+                    Active Medicines
+                </span>
+
+                <div class="stat-icon">
+                    ✓
+                </div>
+
+            </div>
+
+            <div class="stat-val">
+                ${active}
+            </div>
+
+            <span class="stat-desc">
+                Currently active catalog items
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+
+                <span class="stat-title">
+                    Prescription Medicines
+                </span>
+
+                <div class="stat-icon">
+                    Rx
+                </div>
+
+            </div>
+
+            <div class="stat-val">
+                ${prescription}
+            </div>
+
+            <span class="stat-desc">
+                Medicines requiring prescription
+            </span>
+
+        </div>
+    `;
+}
+async function openMedicineModal(medicine = null) {
+
+    const title =
+        document.getElementById("medicine-modal-title");
+
+    const idInput =
+        document.getElementById("medicine-edit-id");
+
+    const nameInput =
+        document.getElementById("medicine-name");
+
+    const genericInput =
+        document.getElementById("medicine-generic-name");
+
+    const brandInput =
+        document.getElementById("medicine-brand-name");
+
+    const dosageInput =
+        document.getElementById("medicine-dosage-form");
+
+    const strengthInput =
+        document.getElementById("medicine-strength");
+
+    const categoryInput =
+        document.getElementById("medicine-category-id");
+
+    const descriptionInput =
+        document.getElementById("medicine-description");
+
+    const prescriptionInput =
+        document.getElementById(
+            "medicine-prescription-required"
+        );
+
+    const activeInput =
+        document.getElementById("medicine-active");
+
+
+    // ---------------------------------------------------------
+    // CHECK FORM ELEMENTS
+    // ---------------------------------------------------------
+
+    if (
+        !title ||
+        !idInput ||
+        !nameInput ||
+        !genericInput ||
+        !brandInput ||
+        !dosageInput ||
+        !strengthInput ||
+        !categoryInput ||
+        !descriptionInput ||
+        !prescriptionInput ||
+        !activeInput
+    ) {
+
+        console.error(
+            "Medicine modal elements are missing from dashboard.html"
+        );
+
+        showToast(
+            "Medicine form could not be opened.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // LOAD CATEGORIES
+    // ---------------------------------------------------------
+
+    const categories =
+        await loadDashboardCategories();
+
+
+    categoryInput.innerHTML = `
+        <option value="">
+            Select category
+        </option>
+    `;
+
+
+    categories.forEach(category => {
+
+        const option =
+            document.createElement("option");
+
+        option.value =
+            category.id;
+
+        option.textContent =
+            category.name;
+
+        categoryInput.appendChild(option);
+
+    });
+
+
+    // ---------------------------------------------------------
+    // CREATE
+    // ---------------------------------------------------------
+
+    if (!medicine) {
+
+        title.textContent =
+            "Create Medicine";
+
+        idInput.value = "";
+
+        nameInput.value = "";
+
+        genericInput.value = "";
+
+        brandInput.value = "";
+
+        dosageInput.value = "";
+
+        strengthInput.value = "";
+
+        categoryInput.value = "";
+
+        descriptionInput.value = "";
+
+        prescriptionInput.value = "false";
+
+        activeInput.value = "true";
+
+
+        openModal("medicine-modal");
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // EDIT
+    // ---------------------------------------------------------
+
+    title.textContent =
+        "Edit Medicine";
+
+    idInput.value =
+        medicine.id ?? "";
+
+    nameInput.value =
+        medicine.name ?? "";
+
+    genericInput.value =
+        medicine.genericName ?? "";
+
+    brandInput.value =
+        medicine.brandName ?? "";
+
+    dosageInput.value =
+        medicine.dosageForm ?? "";
+
+    strengthInput.value =
+        medicine.strength ?? "";
+
+    categoryInput.value =
+        medicine.categoryId ?? "";
+
+    descriptionInput.value =
+        medicine.description ?? "";
+
+    prescriptionInput.value =
+        String(
+            medicine.prescriptionRequired ?? false
+        );
+
+    activeInput.value =
+        String(
+            medicine.active ?? true
+        );
+
+
+    openModal("medicine-modal");
+}
+
+// ============================================================
+// MEDICINE - EDIT
+// ============================================================
+
+async function editMedicine(id) {
+
+    showToast(
+        "Loading medicine...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/medicines/${id}`,
+                "GET"
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Cannot load medicine.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        const medicine =
+            response.body;
+
+
+        if (!medicine) {
+
+            showToast(
+                "Medicine not found.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        await openMedicineModal(
+            medicine
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Error loading medicine:",
+            error
+        );
+
+        showToast(
+            "Error loading medicine.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// MEDICINE - SAVE (CREATE + UPDATE)
+// ============================================================
+
+async function saveMedicine() {
+
+    // ---------------------------------------------------------
+    // Get form elements
+    // ---------------------------------------------------------
+
+    const idInput =
+        document.getElementById(
+            "medicine-edit-id"
+        );
+
+    const nameInput =
+        document.getElementById(
+            "medicine-name"
+        );
+
+    const genericInput =
+        document.getElementById(
+            "medicine-generic-name"
+        );
+
+    const brandInput =
+        document.getElementById(
+            "medicine-brand-name"
+        );
+
+    const dosageInput =
+        document.getElementById(
+            "medicine-dosage-form"
+        );
+
+    const strengthInput =
+        document.getElementById(
+            "medicine-strength"
+        );
+
+    const categoryInput =
+        document.getElementById(
+            "medicine-category-id"
+        );
+
+    const descriptionInput =
+        document.getElementById(
+            "medicine-description"
+        );
+
+    const prescriptionInput =
+        document.getElementById(
+            "medicine-prescription-required"
+        );
+
+    const activeInput =
+        document.getElementById(
+            "medicine-active"
+        );
+
+
+    // ---------------------------------------------------------
+    // Check required elements
+    // ---------------------------------------------------------
+
+    if (
+        !nameInput ||
+        !genericInput ||
+        !brandInput ||
+        !dosageInput ||
+        !strengthInput ||
+        !categoryInput ||
+        !descriptionInput ||
+        !prescriptionInput ||
+        !activeInput
+    ) {
+
+        console.error(
+            "Medicine form elements not found."
+        );
+
+        showToast(
+            "Medicine form fields not found.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // Read values
+    // ---------------------------------------------------------
+
+    const name =
+        nameInput.value.trim();
+
+    const genericName =
+        genericInput.value.trim();
+
+    const brandName =
+        brandInput.value.trim();
+
+    const dosageForm =
+        dosageInput.value.trim();
+
+    const strength =
+        strengthInput.value.trim();
+
+    const categoryId =
+        categoryInput.value.trim();
+
+    const description =
+        descriptionInput.value.trim();
+
+
+    const prescriptionRequired =
+        prescriptionInput.value === "true";
+
+    const active =
+        activeInput.value === "true";
+
+
+    // ---------------------------------------------------------
+    // Validation
+    // ---------------------------------------------------------
+
+    if (!name) {
+
+        showToast(
+            "Medicine name is required.",
+            "warning"
+        );
+
+        nameInput.focus();
+
+        return;
+    }
+
+
+    if (!genericName) {
+
+        showToast(
+            "Generic name is required.",
+            "warning"
+        );
+
+        genericInput.focus();
+
+        return;
+    }
+
+
+    if (!brandName) {
+
+        showToast(
+            "Brand name is required.",
+            "warning"
+        );
+
+        brandInput.focus();
+
+        return;
+    }
+
+
+    if (!dosageForm) {
+
+        showToast(
+            "Dosage form is required.",
+            "warning"
+        );
+
+        dosageInput.focus();
+
+        return;
+    }
+
+
+    if (!strength) {
+
+        showToast(
+            "Strength is required.",
+            "warning"
+        );
+
+        strengthInput.focus();
+
+        return;
+    }
+
+
+    if (!categoryId) {
+
+        showToast(
+            "Please select a medicine category.",
+            "warning"
+        );
+
+        categoryInput.focus();
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // Detect CREATE / UPDATE
+    // ---------------------------------------------------------
+
+    const editId =
+        idInput
+            ? idInput.value.trim()
+            : "";
+
+    const isEdit =
+        Boolean(editId);
+
+
+    // ---------------------------------------------------------
+    // Request payload
+    // ---------------------------------------------------------
+
+    const payload = {
+
+        name: name,
+
+        genericName: genericName,
+
+        brandName: brandName,
+
+        dosageForm: dosageForm,
+
+        strength: strength,
+
+        description: description,
+
+        categoryId: Number(categoryId),
+
+        prescriptionRequired:
+        prescriptionRequired,
+
+        active:
+        active
+    };
+
+
+    console.log(
+        "Medicine Save Payload:",
+        payload
+    );
+
+
+    // ---------------------------------------------------------
+    // API endpoint + method
+    // ---------------------------------------------------------
+
+    const endpoint =
+        isEdit
+            ? `/v1/medicines/${editId}`
+            : "/v1/medicines";
+
+    const method =
+        isEdit
+            ? "PUT"
+            : "POST";
+
+
+    // ---------------------------------------------------------
+    // Loading message
+    // ---------------------------------------------------------
+
+    showToast(
+        isEdit
+            ? "Updating medicine..."
+            : "Creating medicine...",
+        "info"
+    );
+
+
+    // ---------------------------------------------------------
+    // Send request
+    // ---------------------------------------------------------
+
+    try {
+
+        const response =
+            await apiFetch(
+                endpoint,
+                method,
+                payload
+            );
+
+
+        console.log(
+            "Medicine Save API Response:",
+            response
+        );
+
+
+        // -----------------------------------------------------
+        // Check API response
+        // -----------------------------------------------------
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                (
+                    isEdit
+                        ? "Failed to update medicine."
+                        : "Failed to create medicine."
+                ),
+                "danger"
+            );
+
+            return;
+        }
+
+
+        // -----------------------------------------------------
+        // Success message
+        // -----------------------------------------------------
+
+        showToast(
+            isEdit
+                ? "Medicine updated successfully!"
+                : "Medicine created successfully!",
+            "success"
+        );
+
+
+        // -----------------------------------------------------
+        // Close modal
+        // -----------------------------------------------------
+
+        closeModal(
+            "medicine-modal"
+        );
+
+
+        // -----------------------------------------------------
+        // Reload medicine table from backend
+        // -----------------------------------------------------
+
+        await loadWorkspaceTab(
+            "medicines"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error saving medicine:",
+            error
+        );
+
+
+        showToast(
+            isEdit
+                ? "Error updating medicine."
+                : "Error creating medicine.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// MEDICINE - DELETE
+// ============================================================
+
+async function deleteMedicine(id) {
+
+    if (
+        !confirm(
+            `Are you sure you want to delete medicine #${id}?`
+        )
+    ) {
+
+        return;
+    }
+
+
+    showToast(
+        "Deleting medicine...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/medicines/${id}`,
+                "DELETE"
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete medicine.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Medicine deleted successfully!",
+            "success"
+        );
+
+
+        await loadWorkspaceTab(
+            "medicines"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting medicine:",
+            error
+        );
+
+        showToast(
+            "Error deleting medicine.",
+            "danger"
+        );
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ============================================================
 // LOAD WORKSPACE TAB
 // ============================================================
@@ -452,6 +1568,29 @@ async function loadWorkspaceTab(tabId) {
         return;
     }
 
+// ============================================================
+// MEDICINES
+// ============================================================
+
+    if (tabId === "medicines") {
+        wTitle.textContent = "Medicine Catalog";
+        wDesc.textContent = "Manage medicines stored in the MediFind database.";
+        wActions.innerHTML = `
+        <button class="btn btn-primary"    onclick="openMedicineModal()">+ Add Medicine</button>
+    `;
+        const medicines = await loadDashboardMedicines();
+        const categories = await loadDashboardCategories();
+        renderMedicineTable(
+            medicines,
+            categories
+        );
+        renderMedicineStats(
+            medicines
+        );
+        return;
+    }
+
+
     // PLACEHOLDERS FOR OTHER TABS
     if (tabId === "pharmacies") {
         wTitle.textContent = "Registered Pharmacies";
@@ -487,6 +1626,22 @@ async function loadWorkspaceTab(tabId) {
 }
 
 // ============================================================
+// TAB FRIENDLY NAMES
+// ============================================================
+
+function getTabFriendlyName(tabId) {
+    const names = {
+        categories: "Medicine Categories",
+        medicines: "Medicines",
+        pharmacies: "Pharmacies",
+        branches: "Branches",
+        reservations: "Reservations"
+    };
+
+    return names[tabId] || tabId;
+}
+
+// ============================================================
 // SIDEBAR & ROLE SWITCHER
 // ============================================================
 
@@ -501,6 +1656,7 @@ function selectSidebarTab(elem, tabId) {
 
     loadWorkspaceTab(tabId);
 }
+
 
 function switchRole(role) {
     // Update role tab buttons
@@ -528,19 +1684,32 @@ function switchRole(role) {
 
         menuList.innerHTML = `
             <li class="sidebar-item active" onclick="selectSidebarTab(this, 'categories')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                Medicine Categories
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75V11.25a9 9 0 00-9-9z" />
+            </svg>
+             Medicine Categories
             </li>
-            <li class="sidebar-item" onclick="selectSidebarTab(this, 'pharmacies')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
-                </svg>
-                Pharmacies
+
+            <li class="sidebar-item" onclick="selectSidebarTab(this, 'medicines')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path 
+                stroke-linecap="round" 
+                stroke-linejoin="round" 
+                stroke-width="2" 
+                d="M9 3h6a2 2 0 012 2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5a2 2 0 012-2z" 
+            />
+            </svg>
+           Medicines
+           </li>
+
+           <li class="sidebar-item" onclick="selectSidebarTab(this, 'pharmacies')">
+           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+           </svg>
+            Pharmacies
             </li>
-        `;
-        loadWorkspaceTab("categories");
+            `;
+           loadWorkspaceTab("categories");
 
     } else if (role === "PHARMACY_ADMIN") {
         if (sidebarTitle) sidebarTitle.textContent = "Pharmacy Admin";
@@ -583,3 +1752,4 @@ document.addEventListener("DOMContentLoaded", function () {
     // Default to ADMIN view which loads medicine categories
     switchRole("ADMIN");
 });
+
