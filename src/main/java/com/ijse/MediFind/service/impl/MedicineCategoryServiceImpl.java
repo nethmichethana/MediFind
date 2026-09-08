@@ -24,6 +24,7 @@ public class MedicineCategoryServiceImpl implements MedicineCategoryService {
     public MedicineCategoryResDTO createCategory(MedicineCategoryReqDTO categoryReqDTO) {
         MedicineCategory medicineCategory = MedicineCategory.builder()
                 .name(categoryReqDTO.getName())
+                .description(categoryReqDTO.getDescription())
                 .build();
 
         MedicineCategory savedCategory =
@@ -32,6 +33,7 @@ public class MedicineCategoryServiceImpl implements MedicineCategoryService {
         return MedicineCategoryResDTO.builder()
                 .id(savedCategory.getId())
                 .name(savedCategory.getName())
+                .description(savedCategory.getDescription())
                 .build();
     }
 
@@ -42,12 +44,13 @@ public class MedicineCategoryServiceImpl implements MedicineCategoryService {
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Medicine category not found with id: " + id
-                                )
+                                 )
                         );
 
         return MedicineCategoryResDTO.builder()
                 .id(medicineCategory.getId())
                 .name(medicineCategory.getName())
+                .description(medicineCategory.getDescription())
                 .build();
     }
 
@@ -58,6 +61,7 @@ public class MedicineCategoryServiceImpl implements MedicineCategoryService {
                 .map(category -> MedicineCategoryResDTO.builder()
                         .id(category.getId())
                         .name(category.getName())
+                        .description(category.getDescription())
                         .build())
                 .toList();
     }
@@ -73,6 +77,7 @@ public class MedicineCategoryServiceImpl implements MedicineCategoryService {
                         );
 
         medicineCategory.setName(categoryReqDTO.getName());
+        medicineCategory.setDescription(categoryReqDTO.getDescription());
 
         MedicineCategory updatedCategory =
                 medicineCategoryRepository.save(medicineCategory);
@@ -80,6 +85,7 @@ public class MedicineCategoryServiceImpl implements MedicineCategoryService {
         return MedicineCategoryResDTO.builder()
                 .id(updatedCategory.getId())
                 .name(updatedCategory.getName())
+                .description(updatedCategory.getDescription())
                 .build();
     }
 

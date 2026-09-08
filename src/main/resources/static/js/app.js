@@ -122,6 +122,90 @@ async function apiFetch(endpoint, method = "GET", body = null) {
 
 
 // ============================================================
+// MODAL CONTROLS & NAVIGATION
+// ============================================================
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = "flex";
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
+function showSection(sectionName) {
+    const catalogSec = document.getElementById("catalog-section");
+    const resSec = document.getElementById("reservations-section");
+    const loginSec = document.getElementById("login-section");
+
+    if (catalogSec) catalogSec.style.display = "none";
+    if (resSec) resSec.style.display = "none";
+    if (loginSec) loginSec.style.display = "none";
+
+    if (sectionName === "catalog") {
+        if (catalogSec) catalogSec.style.display = "block";
+    } else if (sectionName === "reservations") {
+        if (resSec) resSec.style.display = "block";
+    } else if (sectionName === "login") {
+        if (loginSec) loginSec.style.display = "block";
+    } else if (sectionName === "signup") {
+        openModal("signup-modal");
+        if (catalogSec) catalogSec.style.display = "block";
+    }
+
+    document.querySelectorAll(".nav-links .nav-link").forEach(link => {
+        link.classList.remove("active");
+        if (link.getAttribute("onclick") && link.getAttribute("onclick").includes(sectionName)) {
+            link.classList.add("active");
+        }
+    });
+}
+
+function updateAuthUI() {
+    const userDisplay = document.getElementById("user-display");
+    const authButtons = document.getElementById("auth-buttons");
+    const userGreeting = document.getElementById("user-greeting");
+    const navDashboardLink = document.getElementById("nav-dashboard-link");
+
+    const user = appState.currentUser;
+
+    if (user && user.email) {
+        if (userDisplay) userDisplay.style.display = "flex";
+        if (authButtons) authButtons.style.display = "none";
+        if (userGreeting) {
+            userGreeting.textContent = `Welcome, ${user.name || user.email}`;
+        }
+
+        const role = (user.role || "").toUpperCase();
+        if (navDashboardLink) {
+            if (role === "ADMIN" || role === "PHARMACY_ADMIN" || role === "PHARMACY_STAFF") {
+                navDashboardLink.style.display = "inline-block";
+            } else {
+                navDashboardLink.style.display = "none";
+            }
+        }
+    } else {
+        if (userDisplay) userDisplay.style.display = "none";
+        if (authButtons) authButtons.style.display = "flex";
+        if (navDashboardLink) navDashboardLink.style.display = "none";
+    }
+}
+
+// Close modal when clicking outside
+window.addEventListener("click", function (event) {
+    if (event.target && event.target.classList && event.target.classList.contains("modal-backdrop")) {
+        event.target.style.display = "none";
+    }
+});
+
+
+// ============================================================
 // LOGIN
 // ============================================================
 
@@ -358,6 +442,7 @@ async function performLogin(
 
     // Update application state
     appState.currentUser = user;
+    updateAuthUI();
 
 
     console.log(
@@ -600,7 +685,7 @@ async function handleSignup() {
     // Find CUSTOMER role
     // --------------------------------------------------------
 
-    const customerRole =
+    let customerRole =
         roles.find(role => {
 
             const roleName =
@@ -612,6 +697,25 @@ async function handleSignup() {
                 roleName.toUpperCase() === "CUSTOMER"
             );
         });
+
+
+    if (!customerRole) {
+
+        console.log(
+            "CUSTOMER role not found in database. Auto-creating CUSTOMER role..."
+        );
+
+        const createRoleRes = await apiFetch("/v1/roles", "POST", {
+            roleName: "CUSTOMER"
+        });
+
+        if (createRoleRes.success) {
+            const recheck = await apiFetch("/v1/roles", "GET");
+            if (recheck.success && Array.isArray(recheck.body)) {
+                customerRole = recheck.body.find(r => (r.roleName || r.name)?.toUpperCase() === "CUSTOMER");
+            }
+        }
+    }
 
 
     if (!customerRole) {
@@ -804,6 +908,7 @@ function handleLogout() {
     );
 
     appState.currentUser = null;
+    updateAuthUI();
 
 
     showToast(
@@ -836,6 +941,7 @@ function loadSavedSession() {
     if (!savedSession) {
 
         appState.currentUser = null;
+        updateAuthUI();
 
         return;
     }
@@ -850,6 +956,7 @@ function loadSavedSession() {
             "Saved session loaded:",
             appState.currentUser
         );
+        updateAuthUI();
 
     } catch (error) {
 
@@ -863,6 +970,7 @@ function loadSavedSession() {
         );
 
         appState.currentUser = null;
+        updateAuthUI();
     }
 }
 
@@ -973,6 +1081,45 @@ function showToast(
 
 
 // ============================================================
+// MEDICINE CATEGORIES (CATALOG VIEW)
+// ============================================================
+
+async function loadCatalogCategories() {
+    const container = document.getElementById("category-tabs");
+    if (!container) return;
+
+    try {
+        const response = await apiFetch("/v1/medicine-categories", "GET");
+
+        if (response && response.success && Array.isArray(response.body)) {
+            container.innerHTML = `<button class="tab-btn active" onclick="selectCategory('ALL', this)">All Categories</button>`;
+            response.body.forEach(cat => {
+                const btn = document.createElement("button");
+                btn.className = "tab-btn";
+                btn.textContent = cat.name;
+                btn.onclick = function () {
+                    selectCategory(cat.id, this);
+                };
+                container.appendChild(btn);
+            });
+        }
+    } catch (error) {
+        console.error("Error loading catalog categories:", error);
+    }
+}
+
+function selectCategory(categoryId, tabElement) {
+    if (tabElement) {
+        document.querySelectorAll("#category-tabs .tab-btn").forEach(btn => {
+            btn.classList.remove("active");
+        });
+        tabElement.classList.add("active");
+    }
+    console.log("Selected category ID:", categoryId);
+}
+
+
+// ============================================================
 // APPLICATION INITIALIZATION
 // ============================================================
 
@@ -985,6 +1132,7 @@ document.addEventListener(
         );
 
         loadSavedSession();
+        loadCatalogCategories();
 
     }
 );

@@ -1,17 +1,18 @@
 package com.ijse.MediFind.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ijse.MediFind.enumeration.UserStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UserReqDTO {
 
     @NotBlank(message = "Name is required")

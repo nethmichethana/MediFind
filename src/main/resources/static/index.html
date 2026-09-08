@@ -56,7 +56,7 @@
                 </div>
                 <div class="form-group" style="text-align: left;">
                     <label class="form-label" for="page-login-password">Password</label>
-                    <input type="password" class="form-control" id="page-login-password" value="password123">
+                    <input type="password" class="form-control" id="page-login-password" value="password123" onkeydown="if(event.key==='Enter') handlePageLogin()">
                 </div>
                 <button class="btn btn-primary" onclick="handlePageLogin()" style="width: 100%; margin-top: 1rem;">Sign In</button>
                 <div style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary);">
@@ -261,11 +261,14 @@
             </div>
             <div class="form-group">
                 <label class="form-label" for="login-password">Password</label>
-                <input type="password" class="form-control" id="login-password" value="password123">
+                <input type="password" class="form-control" id="login-password" value="password123" onkeydown="if(event.key==='Enter') handleLogin()">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal('login-modal')">Cancel</button>
                 <button class="btn btn-primary" onclick="handleLogin()">Sign In</button>
+            </div>
+            <div style="margin-top: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); text-align: center;">
+                Don't have an account? <a href="javascript:void(0)" onclick="closeModal('login-modal'); openModal('signup-modal')" style="font-weight: 600; color: var(--secondary);">Create one</a>
             </div>
         </div>
     </div>
@@ -291,11 +294,14 @@
             </div>
             <div class="form-group">
                 <label class="form-label" for="signup-password">Password</label>
-                <input type="password" class="form-control" id="signup-password" placeholder="Create secure password">
+                <input type="password" class="form-control" id="signup-password" placeholder="Create secure password" onkeydown="if(event.key==='Enter') handleSignup()">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeModal('signup-modal')">Cancel</button>
                 <button class="btn btn-primary" onclick="handleSignup()">Register</button>
+            </div>
+            <div style="margin-top: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); text-align: center;">
+                Already have an account? <a href="javascript:void(0)" onclick="closeModal('signup-modal'); openModal('login-modal')" style="font-weight: 600; color: var(--secondary);">Sign In</a>
             </div>
         </div>
     </div>

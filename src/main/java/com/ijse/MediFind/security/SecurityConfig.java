@@ -40,20 +40,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/roles").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/users").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/v1/medicine-categories").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/medicine-categories", "/v1/medicine-categories/**").permitAll()
 
-                        // Only ADMIN can create category
                         .requestMatchers(HttpMethod.POST, "/v1/medicine-categories").hasRole("ADMIN")
-                        // Only ADMIN can update category
                         .requestMatchers(HttpMethod.PUT, "/v1/medicine-categories/**").hasRole("ADMIN")
-                        // Only ADMIN can delete category
                         .requestMatchers(HttpMethod.DELETE, "/v1/medicine-categories/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/v1/medicines", "/v1/medicines/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF")
+                        .requestMatchers(HttpMethod.POST, "/v1/medicines").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/v1/medicines/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/medicines/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.GET, "/v1/reports")
                         .hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/v1/auth/users").hasAnyRole("CUSTOMER")
-                        .requestMatchers(HttpMethod.GET, "/v1/auth/users").hasAnyRole("CUSTOMER").anyRequest().authenticated()
+                        .requestMatchers(HttpMethod.GET, "/v1/auth/users").hasAnyRole("CUSTOMER")
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
