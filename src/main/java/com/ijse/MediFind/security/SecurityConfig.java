@@ -57,6 +57,13 @@ public class SecurityConfig {
                          .requestMatchers(HttpMethod.PUT, "/v1/pharmacies/**").hasRole("ADMIN")
                          .requestMatchers(HttpMethod.DELETE, "/v1/pharmacies/**").hasRole("ADMIN")
 
+
+                         .requestMatchers(HttpMethod.GET, "/v1/pharmacy-branches").permitAll()
+                         .requestMatchers(HttpMethod.GET, "/v1/pharmacy-branches/**").permitAll()
+                         .requestMatchers(HttpMethod.POST, "/v1/pharmacy-branches").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                         .requestMatchers(HttpMethod.PUT, "/v1/pharmacy-branches/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                         .requestMatchers(HttpMethod.DELETE, "/v1/pharmacy-branches/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+
                         .requestMatchers(HttpMethod.GET, "/v1/reports")
                         .hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()

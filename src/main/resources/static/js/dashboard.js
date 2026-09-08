@@ -2311,6 +2311,1054 @@ async function deletePharmacy(id) {
 }
 
 
+// ============================================================
+// PHARMACY BRANCH - GET ALL
+// ============================================================
+
+async function loadDashboardBranches() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/pharmacy-branches",
+                "GET"
+            );
+
+        console.log(
+            "Pharmacy Branches API Response:",
+            response
+        );
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load pharmacy branches:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load pharmacy branches.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let branches =
+            response.body;
+
+        if (!Array.isArray(branches)) {
+
+            if (
+                branches &&
+                Array.isArray(branches.content)
+            ) {
+
+                branches =
+                    branches.content;
+
+            } else {
+
+                branches = [];
+            }
+        }
+
+        console.log(
+            "Branches from Backend:",
+            branches
+        );
+
+        return branches;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading pharmacy branches:",
+            error
+        );
+
+        showToast(
+            "Error loading pharmacy branches.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+
+// ============================================================
+// PHARMACY BRANCH - RENDER TABLE
+// ============================================================
+
+function renderBranchTable(branches) {
+
+    const head =
+        document.getElementById(
+            "workspace-table-head"
+        );
+
+    const body =
+        document.getElementById(
+            "workspace-table-body"
+        );
+
+    const panelTitle =
+        document.getElementById(
+            "table-panel-title"
+        );
+
+    if (!head || !body) {
+
+        console.error(
+            "Branch table elements not found."
+        );
+
+        return;
+    }
+
+    if (panelTitle) {
+
+        panelTitle.textContent =
+            "Pharmacy Branch Outlets";
+    }
+
+    head.innerHTML = `
+        <tr>
+            <th>ID</th>
+            <th>Branch Name</th>
+            <th>Address</th>
+            <th>City</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Pharmacy ID</th>
+            <th>Active Status</th>
+            <th style="text-align:right;">
+                Actions
+            </th>
+        </tr>
+    `;
+
+    body.innerHTML = "";
+
+    if (
+        !Array.isArray(branches) ||
+        branches.length === 0
+    ) {
+
+        body.innerHTML = `
+            <tr>
+                <td
+                    colspan="9"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div
+                        style="
+                            margin-bottom:0.5rem;
+                            font-size:1.1rem;
+                            font-weight:500;
+                        "
+                    >
+                        No branches registered
+                    </div>
+
+                    <div
+                        style="font-size:0.85rem;"
+                    >
+                        Click "Register Pharmacy Branch"
+                        to create a branch.
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    branches.forEach(branch => {
+
+        const row =
+            document.createElement("tr");
+
+        const branchName =
+            escapeHtml(branch.name || "");
+
+        const address =
+            escapeHtml(branch.address || "");
+
+        const city =
+            escapeHtml(branch.city || "");
+
+        const phone =
+            escapeHtml(branch.phone || "");
+
+        const email =
+            escapeHtml(branch.email || "");
+
+        const pharmacyId =
+            branch.pharmacyId ?? "-";
+
+        const active =
+            branch.active === true;
+
+        row.innerHTML = `
+            <td>#${branch.id}</td>
+
+            <td>
+                <strong>
+                    ${branchName}
+                </strong>
+            </td>
+
+            <td>
+                ${address || "-"}
+            </td>
+
+            <td>
+                ${city || "-"}
+            </td>
+
+            <td>
+                ${phone || "-"}
+            </td>
+
+            <td>
+                ${email || "-"}
+            </td>
+
+            <td>
+                ${pharmacyId}
+            </td>
+
+            <td>
+                <span
+                    class="badge ${
+            active
+                ? "badge-success"
+                : "badge-danger"
+        }"
+                >
+                    ${
+            active
+                ? "Active"
+                : "Inactive"
+        }
+                </span>
+            </td>
+
+            <td style="text-align:right;">
+
+                <button
+                    class="btn btn-secondary"
+                    style="
+                        padding:0.3rem 0.65rem;
+                        font-size:0.75rem;
+                        margin-right:6px;
+                    "
+                    onclick="editBranch(${branch.id})"
+                >
+                    Edit
+                </button>
+
+                <button
+                    class="btn btn-secondary"
+                    style="
+                        padding:0.3rem 0.65rem;
+                        font-size:0.75rem;
+                        color:var(--accent-rose);
+                        border-color:rgba(244,63,94,0.3);
+                    "
+                    onclick="deleteBranch(${branch.id})"
+                >
+                    Delete
+                </button>
+
+            </td>
+        `;
+
+        body.appendChild(row);
+    });
+}
+
+
+// ============================================================
+// PHARMACY BRANCH - STATISTICS
+// ============================================================
+
+function renderBranchStats(branches) {
+
+    const statsContainer =
+        document.getElementById(
+            "workspace-stats"
+        );
+
+    if (!statsContainer) {
+        return;
+    }
+
+    const list =
+        Array.isArray(branches)
+            ? branches
+            : [];
+
+    const total =
+        list.length;
+
+    const active =
+        list.filter(
+            branch =>
+                branch.active === true
+        ).length;
+
+    const inactive =
+        total - active;
+
+    statsContainer.innerHTML = `
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+
+                <span class="stat-title">
+                    Total Branches
+                </span>
+
+                <div class="stat-icon">
+
+                    <svg
+                        width="20"
+                        height="20"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4M9 10h.01M12 10h.01M15 10h.01"
+                        />
+                    </svg>
+
+                </div>
+
+            </div>
+
+            <div class="stat-val">
+                ${total}
+            </div>
+
+            <span class="stat-desc">
+                Branch outlets loaded from database
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+
+                <span class="stat-title">
+                    Active Branches
+                </span>
+
+                <div class="stat-icon">
+
+                    <svg
+                        width="20"
+                        height="20"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+
+                </div>
+
+            </div>
+
+            <div class="stat-val">
+                ${active}
+            </div>
+
+            <span class="stat-desc">
+                Currently active outlets
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+
+                <span class="stat-title">
+                    Inactive Branches
+                </span>
+
+                <div class="stat-icon">
+
+                    <svg
+                        width="20"
+                        height="20"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"
+                        />
+                    </svg>
+
+                </div>
+
+            </div>
+
+            <div class="stat-val">
+                ${inactive}
+            </div>
+
+            <span class="stat-desc">
+                Inactive or suspended outlets
+            </span>
+
+        </div>
+
+    `;
+}
+
+
+// ============================================================
+// OPEN PHARMACY BRANCH MODAL
+// ============================================================
+
+function openBranchModal() {
+
+    const editId =
+        document.getElementById(
+            "branch-edit-id"
+        );
+
+    const name =
+        document.getElementById(
+            "branch-name"
+        );
+
+    const address =
+        document.getElementById(
+            "branch-address"
+        );
+
+    const city =
+        document.getElementById(
+            "branch-city"
+        );
+
+    const phone =
+        document.getElementById(
+            "branch-phone"
+        );
+
+    const email =
+        document.getElementById(
+            "branch-email"
+        );
+
+    const title =
+        document.getElementById(
+            "branch-modal-title"
+        );
+
+
+    if (editId) {
+        editId.value = "";
+    }
+
+    if (name) {
+        name.value = "";
+    }
+
+    if (address) {
+        address.value = "";
+    }
+
+    if (city) {
+        city.value = "";
+    }
+
+    if (phone) {
+        phone.value = "";
+    }
+
+    if (email) {
+        email.value = "";
+    }
+
+    if (title) {
+
+        title.textContent =
+            "Register Pharmacy Branch";
+    }
+
+
+    // Default pharmacy ID.
+    // Change this according to the pharmacy
+    // currently managed by the logged-in user.
+
+    const pharmacyId =
+        document.getElementById(
+            "branch-pharmacy-id"
+        );
+
+    if (pharmacyId) {
+
+        pharmacyId.value =
+            sessionUser.pharmacyId ||
+            sessionUser.pharmacyID ||
+            "";
+    }
+
+
+    openModal(
+        "branch-modal"
+    );
+}
+
+
+// ============================================================
+// CREATE / UPDATE PHARMACY BRANCH
+// ============================================================
+
+async function saveBranch() {
+
+    const nameInput =
+        document.getElementById(
+            "branch-name"
+        );
+
+    const addressInput =
+        document.getElementById(
+            "branch-address"
+        );
+
+    const cityInput =
+        document.getElementById(
+            "branch-city"
+        );
+
+    const phoneInput =
+        document.getElementById(
+            "branch-phone"
+        );
+
+    const emailInput =
+        document.getElementById(
+            "branch-email"
+        );
+
+    const editIdInput =
+        document.getElementById(
+            "branch-edit-id"
+        );
+
+    const pharmacyIdInput =
+        document.getElementById(
+            "branch-pharmacy-id"
+        );
+
+
+    const name =
+        nameInput
+            ? nameInput.value.trim()
+            : "";
+
+    const address =
+        addressInput
+            ? addressInput.value.trim()
+            : "";
+
+    const city =
+        cityInput
+            ? cityInput.value.trim()
+            : "";
+
+    const phone =
+        phoneInput
+            ? phoneInput.value.trim()
+            : "";
+
+    const email =
+        emailInput
+            ? emailInput.value.trim()
+            : "";
+
+    const editId =
+        editIdInput
+            ? editIdInput.value.trim()
+            : "";
+
+    const pharmacyId =
+        pharmacyIdInput
+            ? pharmacyIdInput.value.trim()
+            : "";
+
+
+    if (!name) {
+
+        showToast(
+            "Branch name is required.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    if (!city) {
+
+        showToast(
+            "Branch city is required.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    /*
+     * PharmacyBranchReqDTO:
+     *
+     * name
+     * address
+     * city
+     * phone
+     * email
+     * latitude
+     * longitude
+     * active
+     * pharmacyId
+     */
+
+    const payload = {
+
+        name: name,
+
+        address: address,
+
+        city: city,
+
+        phone: phone,
+
+        email: email,
+
+        latitude: 6.9000,
+
+        longitude: 79.8000,
+
+        active: true,
+
+        pharmacyId:
+            pharmacyId
+                ? Number(pharmacyId)
+                : null
+    };
+
+
+    const isEdit =
+        Boolean(editId);
+
+
+    /*
+     * CREATE
+     * POST /v1/pharmacy-branches
+     *
+     * UPDATE
+     * PUT /v1/pharmacy-branches/{id}
+     */
+
+    const endpoint =
+        isEdit
+            ? `/v1/pharmacy-branches/${editId}`
+            : "/v1/pharmacy-branches";
+
+    const method =
+        isEdit
+            ? "PUT"
+            : "POST";
+
+
+    if (
+        !isEdit &&
+        !pharmacyId
+    ) {
+
+        showToast(
+            "Pharmacy ID is required.",
+            "warning"
+        );
+
+        return;
+    }
+
+
+    showToast(
+        isEdit
+            ? "Updating pharmacy branch..."
+            : "Creating pharmacy branch...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                endpoint,
+                method,
+                payload
+            );
+
+
+        console.log(
+            "Save Branch Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to save pharmacy branch.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            isEdit
+                ? "Pharmacy branch updated successfully!"
+                : "Pharmacy branch created successfully!",
+            "success"
+        );
+
+
+        closeModal(
+            "branch-modal"
+        );
+
+
+        // Reload directly from MySQL
+
+        const branches =
+            await loadDashboardBranches();
+
+
+        renderBranchTable(
+            branches
+        );
+
+
+        renderBranchStats(
+            branches
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error saving pharmacy branch:",
+            error
+        );
+
+        showToast(
+            "Error saving pharmacy branch.",
+            "danger"
+        );
+    }
+}
+
+
+// ============================================================
+// EDIT PHARMACY BRANCH
+// ============================================================
+
+async function editBranch(id) {
+
+    showToast(
+        "Loading branch...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/pharmacy-branches/${id}`,
+                "GET"
+            );
+
+
+        console.log(
+            "Get Branch Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Cannot load branch.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        const branch =
+            response.body;
+
+
+        if (!branch) {
+
+            showToast(
+                "Branch not found.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        const editIdInput =
+            document.getElementById(
+                "branch-edit-id"
+            );
+
+        const nameInput =
+            document.getElementById(
+                "branch-name"
+            );
+
+        const addressInput =
+            document.getElementById(
+                "branch-address"
+            );
+
+        const cityInput =
+            document.getElementById(
+                "branch-city"
+            );
+
+        const phoneInput =
+            document.getElementById(
+                "branch-phone"
+            );
+
+        const emailInput =
+            document.getElementById(
+                "branch-email"
+            );
+
+        const pharmacyIdInput =
+            document.getElementById(
+                "branch-pharmacy-id"
+            );
+
+        const title =
+            document.getElementById(
+                "branch-modal-title"
+            );
+
+
+        if (editIdInput) {
+
+            editIdInput.value =
+                branch.id;
+        }
+
+        if (nameInput) {
+
+            nameInput.value =
+                branch.name || "";
+        }
+
+        if (addressInput) {
+
+            addressInput.value =
+                branch.address || "";
+        }
+
+        if (cityInput) {
+
+            cityInput.value =
+                branch.city || "";
+        }
+
+        if (phoneInput) {
+
+            phoneInput.value =
+                branch.phone || "";
+        }
+
+        if (emailInput) {
+
+            emailInput.value =
+                branch.email || "";
+        }
+
+        if (pharmacyIdInput) {
+
+            pharmacyIdInput.value =
+                branch.pharmacyId || "";
+        }
+
+        if (title) {
+
+            title.textContent =
+                "Modify Pharmacy Branch";
+        }
+
+
+        openModal(
+            "branch-modal"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error loading branch:",
+            error
+        );
+
+        showToast(
+            "Error loading branch.",
+            "danger"
+        );
+    }
+}
+
+
+// ============================================================
+// DELETE PHARMACY BRANCH
+// ============================================================
+
+async function deleteBranch(id) {
+
+    if (
+        !confirm(
+            `Are you sure you want to delete pharmacy branch #${id}?`
+        )
+    ) {
+
+        return;
+    }
+
+
+    showToast(
+        "Deleting pharmacy branch...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/pharmacy-branches/${id}`,
+                "DELETE"
+            );
+
+
+        console.log(
+            "Delete Branch Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete branch.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Pharmacy branch deleted successfully!",
+            "success"
+        );
+
+
+        // Reload directly from MySQL
+
+        const branches =
+            await loadDashboardBranches();
+
+
+        renderBranchTable(
+            branches
+        );
+
+
+        renderBranchStats(
+            branches
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting pharmacy branch:",
+            error
+        );
+
+        showToast(
+            "Error deleting pharmacy branch.",
+            "danger"
+        );
+    }
+}
+
+
 
 
 
@@ -2405,14 +3453,18 @@ async function loadWorkspaceTab(tabId) {
         return;
     }
 
-    if (tabId === "branches") {
-        wTitle.textContent = "Branch Outlets";
-        wDesc.textContent = "Configure branch locations and operating contacts.";
-        if (tTitle) tTitle.textContent = "Branch Records";
-        if (wStats) wStats.innerHTML = "";
-        if (tHead) tHead.innerHTML = `<tr><th>ID</th><th>Branch Name</th><th>City</th><th>Phone</th></tr>`;
-        if (tBody) tBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">Branch management module.</td></tr>`;
-        return;
+ if (tabId === "branches") {
+    wTitle.textContent = "Pharmacy Branches";
+    wDesc.textContent = "Manage pharmacy branch outlets and their operational status.";
+    wActions.innerHTML = ` <button  class="btn btn-primary" onclick="openBranchModal()">
+         Register Pharmacy Branch
+        </button>
+    `;
+        loadDashboardBranches().then(branches => {
+        renderBranchTable(branches);
+        renderBranchStats(branches);
+
+    });
     }
 
     if (tabId === "reservations") {
