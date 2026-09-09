@@ -34,5 +34,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .password(user.getPassword())
                 .roles(roleName)
                 .build();
+
+
     }
 }

@@ -1517,7 +1517,7 @@ async function deleteMedicine(id) {
 }
 
 // ============================================================
-// PHARMACY - GET ALL
+// PHARMACY - GET ALL FROM BACKEND
 // ============================================================
 
 async function loadDashboardPharmacies() {
@@ -1600,10 +1600,7 @@ async function loadDashboardPharmacies() {
 // RENDER PHARMACY TABLE
 // ============================================================
 
-function renderPharmacyTable(
-    pharmacies = [],
-    owners = []
-) {
+function renderPharmacyTable(pharmacies) {
 
     const head =
         document.getElementById(
@@ -1632,21 +1629,18 @@ function renderPharmacyTable(
     if (panelTitle) {
 
         panelTitle.textContent =
-            "Pharmacy Corporate Records";
+            "Registered Pharmacy Entities";
     }
 
     head.innerHTML = `
         <tr>
-            <th style="width:60px;">ID</th>
-            <th>Pharmacy Name</th>
-            <th>Registration No</th>
+            <th>ID</th>
+            <th>Corporate Name</th>
+            <th>Reg Code</th>
             <th>Phone</th>
-            <th>Email</th>
+            <th>HQ Email</th>
+            <th>Address</th>
             <th>City</th>
-            <th>Owner</th>
-            <th style="width:170px; text-align:right;">
-                Actions
-            </th>
         </tr>
     `;
 
@@ -1660,31 +1654,14 @@ function renderPharmacyTable(
         body.innerHTML = `
             <tr>
                 <td
-                    colspan="8"
+                    colspan="7"
                     style="
                         text-align:center;
                         padding:2.5rem;
                         color:var(--text-muted);
                     "
                 >
-
-                    <div
-                        style="
-                            margin-bottom:0.5rem;
-                            font-size:1.1rem;
-                            font-weight:500;
-                        "
-                    >
-                        No pharmacies found
-                    </div>
-
-                    <div
-                        style="font-size:0.85rem;"
-                    >
-                        Click "Register Pharmacy" above
-                        to create your first pharmacy.
-                    </div>
-
+                    No pharmacies found.
                 </td>
             </tr>
         `;
@@ -1694,100 +1671,42 @@ function renderPharmacyTable(
 
     pharmacies.forEach(pharmacy => {
 
-        const row =
+        const tr =
             document.createElement("tr");
 
-        const owner =
-            owners.find(
-                user =>
-                    Number(user.id) ===
-                    Number(pharmacy.ownerId)
-            );
-
-        const ownerName =
-            owner
-                ? `${owner.name} (${owner.email})`
-                : pharmacy.ownerId
-                    ? `User #${pharmacy.ownerId}`
-                    : "Unassigned";
-
-        row.innerHTML = `
-            <td>
-                #${pharmacy.id}
-            </td>
+        tr.innerHTML = `
+            <td>${pharmacy.id ?? "-"}</td>
 
             <td>
                 <strong>
-                    ${escapeHtml(
-            pharmacy.name || ""
-        )}
+                    ${pharmacy.name ?? "-"}
                 </strong>
             </td>
 
             <td>
-                ${escapeHtml(
-            pharmacy.registrationNumber || "-"
-        )}
+                ${pharmacy.registrationNumber ?? "-"}
             </td>
 
             <td>
-                ${escapeHtml(
-            pharmacy.phone || "-"
-        )}
+                ${pharmacy.phone ?? "-"}
             </td>
 
             <td>
-                ${escapeHtml(
-            pharmacy.email || "-"
-        )}
+                ${pharmacy.email ?? "-"}
             </td>
 
             <td>
-                ${escapeHtml(
-            pharmacy.city || "-"
-        )}
+                ${pharmacy.address ?? "-"}
             </td>
 
             <td>
-                <span class="badge badge-info">
-                    ${escapeHtml(ownerName)}
-                </span>
-            </td>
-
-            <td style="text-align:right;">
-
-                <button
-                    class="btn btn-secondary"
-                    style="
-                        padding:0.3rem 0.65rem;
-                        font-size:0.75rem;
-                        margin-right:6px;
-                    "
-                    onclick="editPharmacy(${pharmacy.id})"
-                >
-                    Edit
-                </button>
-
-                <button
-                    class="btn btn-secondary"
-                    style="
-                        padding:0.3rem 0.65rem;
-                        font-size:0.75rem;
-                        color:var(--accent-rose);
-                        border-color:rgba(244,63,94,0.3);
-                    "
-                    onclick="deletePharmacy(${pharmacy.id})"
-                >
-                    Delete
-                </button>
-
+                ${pharmacy.city ?? "-"}
             </td>
         `;
 
-        body.appendChild(row);
+        body.appendChild(tr);
     });
 }
-
 // ============================================================
 // PHARMACY STATISTICS
 // ============================================================
@@ -3358,6 +3277,1053 @@ async function deleteBranch(id) {
     }
 }
 
+// ============================================================
+// RESERVATION - GET ALL
+// ============================================================
+
+async function loadDashboardReservations() {
+
+    try {
+
+        const response = await apiFetch(
+            "/v1/reservations",
+            "GET"
+        );
+
+        console.log(
+            "Dashboard Reservations API Response:",
+            response
+        );
+
+        if (!response || !response.success) {
+
+            console.error(
+                "Failed to load reservations:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load reservations.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let reservations = response.body;
+
+        if (!Array.isArray(reservations)) {
+
+            if (
+                reservations &&
+                Array.isArray(reservations.content)
+            ) {
+
+                reservations = reservations.content;
+
+            } else {
+
+                reservations = [];
+            }
+        }
+
+        console.log(
+            "Reservations from Backend:",
+            reservations
+        );
+
+        return reservations;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading reservations:",
+            error
+        );
+
+        showToast(
+            "Error loading reservations.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+
+// ============================================================
+// LOAD RESERVATION BY ID
+// ============================================================
+
+async function loadReservationById(id) {
+
+    try {
+
+        const response = await apiFetch(
+            `/v1/reservations/${id}`,
+            "GET"
+        );
+
+        console.log(
+            "Reservation By ID API Response:",
+            response
+        );
+
+        if (!response || !response.success) {
+
+            showToast(
+                response?.message ||
+                "Cannot load reservation.",
+                "danger"
+            );
+
+            return null;
+        }
+
+        return response.body;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading reservation:",
+            error
+        );
+
+        showToast(
+            "Error loading reservation.",
+            "danger"
+        );
+
+        return null;
+    }
+}
+
+
+// ============================================================
+// RENDER RESERVATION TABLE
+// ============================================================
+
+function renderReservationTable(reservations) {
+
+    const head =
+        document.getElementById(
+            "workspace-table-head"
+        );
+
+    const body =
+        document.getElementById(
+            "workspace-table-body"
+        );
+
+    const panelTitle =
+        document.getElementById(
+            "table-panel-title"
+        );
+
+    if (!head || !body) {
+
+        console.error(
+            "Reservation table elements not found."
+        );
+
+        return;
+    }
+
+    if (panelTitle) {
+        panelTitle.textContent =
+            "Pending & Active Reservations";
+    }
+
+    head.innerHTML = `
+        <tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Branch</th>
+            <th>Reservation Date</th>
+            <th>Pickup Date</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th style="text-align:right;">Actions</th>
+        </tr>
+    `;
+
+    body.innerHTML = "";
+
+    if (
+        !Array.isArray(reservations) ||
+        reservations.length === 0
+    ) {
+
+        body.innerHTML = `
+            <tr>
+                <td
+                    colspan="8"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div
+                        style="
+                            margin-bottom:0.5rem;
+                            font-size:1.1rem;
+                            font-weight:500;
+                        "
+                    >
+                        No reservations found
+                    </div>
+
+                    <div style="font-size:0.85rem;">
+                        Reservations created by customers
+                        will appear here.
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+
+    reservations.forEach(reservation => {
+
+        const row =
+            document.createElement("tr");
+
+        const reservationDate =
+            reservation.reservationDate
+                ? formatReservationDate(
+                    reservation.reservationDate
+                )
+                : "N/A";
+
+        const pickupDate =
+            reservation.pickupDate
+                ? formatReservationDate(
+                    reservation.pickupDate
+                )
+                : "N/A";
+
+        const status =
+            reservation.status || "PENDING";
+
+        const notes =
+            reservation.notes || "-";
+
+        row.innerHTML = `
+            <td>
+                <strong>
+                    #${reservation.id}
+                </strong>
+            </td>
+
+            <td>
+                User #${reservation.userId ?? "N/A"}
+            </td>
+
+            <td>
+                Branch #${reservation.pharmacyBranchId ?? "N/A"}
+            </td>
+
+            <td>
+                ${escapeHtml(reservationDate)}
+            </td>
+
+            <td>
+                ${escapeHtml(pickupDate)}
+            </td>
+
+            <td>
+                <span class="reservation-status ${getReservationStatusClass(status)}">
+                    ${escapeHtml(status)}
+                </span>
+            </td>
+
+            <td>
+                <span
+                    style="
+                        color:var(--text-secondary);
+                    "
+                >
+                    ${escapeHtml(notes)}
+                </span>
+            </td>
+
+            <td style="text-align:right;">
+
+                <button
+                    class="btn btn-secondary"
+                    style="
+                        padding:0.3rem 0.65rem;
+                        font-size:0.75rem;
+                    "
+                    onclick="processReservation(${reservation.id})"
+                >
+                    Process
+                </button>
+
+            </td>
+        `;
+
+        body.appendChild(row);
+    });
+}
+
+
+// ============================================================
+// RESERVATION DATE FORMATTER
+// ============================================================
+
+function formatReservationDate(dateValue) {
+
+    if (!dateValue) {
+        return "N/A";
+    }
+
+    try {
+
+        const date =
+            new Date(dateValue);
+
+        if (isNaN(date.getTime())) {
+            return String(dateValue);
+        }
+
+        return date.toLocaleString(
+            "en-US",
+            {
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+
+    } catch (error) {
+
+        return String(dateValue);
+    }
+}
+
+
+// ============================================================
+// RESERVATION STATUS STYLE
+// ============================================================
+
+function getReservationStatusClass(status) {
+
+    switch (status) {
+
+        case "PENDING":
+            return "status-pending";
+
+        case "PREPARED":
+            return "status-prepared";
+
+        case "COMPLETED":
+            return "status-completed";
+
+        case "CANCELLED":
+            return "status-cancelled";
+
+        default:
+            return "status-pending";
+    }
+}
+
+
+// ============================================================
+// RESERVATION STATISTICS
+// ============================================================
+
+function renderReservationStats(reservations) {
+
+    const statsContainer =
+        document.getElementById(
+            "workspace-stats"
+        );
+
+    if (!statsContainer) {
+        return;
+    }
+
+    const list =
+        Array.isArray(reservations)
+            ? reservations
+            : [];
+
+    const total =
+        list.length;
+
+    const pending =
+        list.filter(
+            r => r.status === "PENDING"
+        ).length;
+
+    const prepared =
+        list.filter(
+            r => r.status === "PREPARED"
+        ).length;
+
+    const completed =
+        list.filter(
+            r => r.status === "COMPLETED"
+        ).length;
+
+    const cancelled =
+        list.filter(
+            r => r.status === "CANCELLED"
+        ).length;
+
+
+    statsContainer.innerHTML = `
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+                <span class="stat-title">
+                    Total Reservations
+                </span>
+            </div>
+
+            <div class="stat-val">
+                ${total}
+            </div>
+
+            <span class="stat-desc">
+                Reservations from backend
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+                <span class="stat-title">
+                    Pending
+                </span>
+            </div>
+
+            <div class="stat-val">
+                ${pending}
+            </div>
+
+            <span class="stat-desc">
+                Awaiting verification
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+                <span class="stat-title">
+                    Prepared
+                </span>
+            </div>
+
+            <div class="stat-val">
+                ${prepared}
+            </div>
+
+            <span class="stat-desc">
+                Ready for pickup
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+                <span class="stat-title">
+                    Completed
+                </span>
+            </div>
+
+            <div class="stat-val">
+                ${completed}
+            </div>
+
+            <span class="stat-desc">
+                Successfully completed
+            </span>
+
+        </div>
+
+
+        <div class="glass-card stat-card animate-fade">
+
+            <div class="stat-header">
+                <span class="stat-title">
+                    Cancelled
+                </span>
+            </div>
+
+            <div class="stat-val">
+                ${cancelled}
+            </div>
+
+            <span class="stat-desc">
+                Cancelled reservations
+            </span>
+
+        </div>
+
+    `;
+}
+
+
+// ============================================================
+// PROCESS RESERVATION
+// ============================================================
+
+async function processReservation(resId) {
+
+    const reservation =
+        await loadReservationById(resId);
+
+    if (!reservation) {
+        return;
+    }
+
+    document.getElementById(
+        "process-res-id"
+    ).value = reservation.id;
+
+
+    document.getElementById(
+        "process-res-user"
+    ).textContent =
+        `User #${reservation.userId ?? "N/A"}`;
+
+
+    document.getElementById(
+        "process-res-items"
+    ).textContent =
+        "Reservation items are managed through ReservationItem API";
+
+
+    document.getElementById(
+        "process-res-notes"
+    ).textContent =
+        reservation.notes || "None";
+
+
+    document.getElementById(
+        "process-status"
+    ).value =
+        reservation.status || "PENDING";
+
+
+    const feedback =
+        document.getElementById(
+            "process-feedback"
+        );
+
+    if (feedback) {
+        feedback.value = "";
+    }
+
+    openModal(
+        "reservation-process-modal"
+    );
+}
+
+
+// ============================================================
+// UPDATE RESERVATION STATUS
+// ============================================================
+
+async function saveReservationStatus() {
+
+    const id =
+        document.getElementById(
+            "process-res-id"
+        ).value;
+
+    const status =
+        document.getElementById(
+            "process-status"
+        ).value;
+
+
+    if (!id) {
+
+        showToast(
+            "Reservation ID not found.",
+            "danger"
+        );
+
+        return;
+    }
+
+    const existingReservation =
+        await loadReservationById(id);
+
+    if (!existingReservation) {
+        return;
+    }
+
+
+    const payload = {
+
+        reservationDate:
+        existingReservation.reservationDate,
+
+        pickupDate:
+        existingReservation.pickupDate,
+
+        status:
+        status,
+
+        notes:
+            existingReservation.notes || "",
+
+        userId:
+        existingReservation.userId,
+
+        pharmacyBranchId:
+        existingReservation.pharmacyBranchId
+    };
+
+
+    showToast(
+        "Updating reservation status...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/reservations/${id}`,
+                "PUT",
+                payload
+            );
+
+
+        console.log(
+            "Update Reservation API Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to update reservation.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        closeModal(
+            "reservation-process-modal"
+        );
+
+
+        showToast(
+            "Reservation status updated successfully!",
+            "success"
+        );
+
+
+        /*
+         * Reload directly from MySQL/backend.
+         */
+
+        await loadWorkspaceTab(
+            "reservations"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Error updating reservation:",
+            error
+        );
+
+        showToast(
+            "Error updating reservation.",
+            "danger"
+        );
+    }
+}
+
+
+// ============================================================
+// DELETE RESERVATION
+// ============================================================
+
+async function deleteReservation(id) {
+
+    if (
+        !confirm(
+            `Are you sure you want to delete reservation #${id}?`
+        )
+    ) {
+        return;
+    }
+
+
+    showToast(
+        "Deleting reservation...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/reservations/${id}`,
+                "DELETE"
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete reservation.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Reservation deleted successfully!",
+            "success"
+        );
+
+
+        await loadWorkspaceTab(
+            "reservations"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting reservation:",
+            error
+        );
+
+        showToast(
+            "Error deleting reservation.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// INVENTORY - GET ALL
+// ============================================================
+
+async function loadDashboardInventory() {
+
+    try {
+
+        const response =
+            await apiFetch("/v1/inventories", "GET");
+
+        console.log(
+            "Dashboard Inventory API Response:",
+            response
+        );
+
+        if (!response || !response.success) {
+
+            showToast(
+                response?.message ||
+                "Cannot load inventory.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let inventory = response.body;
+
+        if (!Array.isArray(inventory)) {
+
+            if (
+                inventory &&
+                Array.isArray(inventory.content)
+            ) {
+                inventory = inventory.content;
+            } else {
+                inventory = [];
+            }
+        }
+
+        return inventory;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading inventory:",
+            error
+        );
+
+        showToast(
+            "Error loading inventory.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+async function loadInventoryRelatedData() {
+
+    const [branchesResponse, batchesResponse] =
+        await Promise.all([
+            apiFetch("/v1/pharmacy-branches", "GET"),
+            apiFetch("/v1/medicine-batches", "GET")
+        ]);
+
+    let branches =
+        branchesResponse?.body || [];
+
+    let batches =
+        batchesResponse?.body || [];
+
+    if (!Array.isArray(branches)) {
+        branches = branches.content || [];
+    }
+
+    if (!Array.isArray(batches)) {
+        batches = batches.content || [];
+    }
+
+    return {
+        branches,
+        batches
+    };
+}
+
+async function renderInventoryTable() {
+
+    const head =
+        document.getElementById(
+            "workspace-table-head"
+        );
+
+    const body =
+        document.getElementById(
+            "workspace-table-body"
+        );
+
+    const panelTitle =
+        document.getElementById(
+            "table-panel-title"
+        );
+
+    panelTitle.textContent =
+        "Branch Stock Allocation Sheets";
+
+    head.innerHTML = `
+        <tr>
+            <th>ID</th>
+            <th>Branch</th>
+            <th>Medicine / Batch</th>
+            <th>Available Qty</th>
+            <th>Reorder Level</th>
+            <th>Last Updated</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    `;
+
+    body.innerHTML = `
+        <tr>
+            <td colspan="8"
+                style="text-align:center; padding:2rem;">
+                Loading inventory...
+            </td>
+        </tr>
+    `;
+
+    const inventory =
+        await loadDashboardInventory();
+
+    const related =
+        await loadInventoryRelatedData();
+
+    const branches =
+        related.branches;
+
+    const batches =
+        related.batches;
+
+    if (inventory.length === 0) {
+
+        body.innerHTML = `
+            <tr>
+                <td colspan="8"
+                    style="text-align:center;
+                           color:var(--text-muted);">
+                    No inventory records found.
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    body.innerHTML = "";
+
+    inventory.forEach(inv => {
+
+        const branch =
+            branches.find(
+                b => b.id == inv.pharmacyBranchId
+            );
+
+        const batch =
+            batches.find(
+                b => b.id == inv.medicineBatchId
+            );
+
+        const branchName =
+            branch?.name ||
+            "Unknown Branch";
+
+        const batchName =
+            batch?.batchNumber ||
+            "Unknown Batch";
+
+        const isLow =
+            inv.quantity <= inv.reorderLevel;
+
+        const statusBadge =
+            isLow
+                ? `<span class="badge badge-danger">
+                       LOW STOCK
+                   </span>`
+                : `<span class="badge badge-success">
+                       OK STOCK
+                   </span>`;
+
+        const tr =
+            document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${inv.id}</td>
+
+            <td>
+                <strong>${branchName}</strong>
+            </td>
+
+            <td>
+                <strong>
+                    ${batchName}
+                </strong>
+            </td>
+
+            <td>
+                ${inv.quantity} Units
+            </td>
+
+            <td>
+                ${inv.reorderLevel} Units
+            </td>
+
+            <td>
+                <small>
+                    ${inv.lastUpdated
+            ? new Date(
+                inv.lastUpdated
+            ).toLocaleString()
+            : "N/A"}
+                </small>
+            </td>
+
+            <td>
+                ${statusBadge}
+            </td>
+
+            <td>
+
+                <button
+                    class="btn btn-secondary"
+                    style="padding:0.25rem 0.5rem;
+                           font-size:0.75rem;"
+                    onclick="editInventory(${inv.id})">
+                    Edit
+                </button>
+
+                <button
+                    class="btn btn-danger"
+                    style="padding:0.25rem 0.5rem;
+                           font-size:0.75rem;"
+                    onclick="deleteInventory(${inv.id})">
+                    Delete
+                </button>
+
+            </td>
+        `;
+
+        body.appendChild(tr);
+    });
+}
+
+const requestBody = {
+
+    pharmacyBranchId:
+        Number(
+            document.getElementById(
+                "inventory-branch"
+            ).value
+        ),
+
+    medicineBatchId:
+        Number(
+            document.getElementById(
+                "inventory-batch"
+            ).value
+        ),
+
+    quantity:
+        Number(
+            document.getElementById(
+                "inventory-qty"
+            ).value
+        ),
+
+    reorderLevel:
+        Number(
+            document.getElementById(
+                "inventory-reorder"
+            ).value
+        )
+};
+
+const response =
+    await apiFetch(
+        "/v1/inventories",
+        "POST",
+        requestBody
+    );
 
 
 
@@ -3464,16 +4430,33 @@ async function loadWorkspaceTab(tabId) {
         renderBranchTable(branches);
         renderBranchStats(branches);
 
-    });
+       }
+     );
     }
 
     if (tabId === "reservations") {
         wTitle.textContent = "Prescription Reservations";
         wDesc.textContent = "Process and verify client pharmacy reservations.";
-        if (tTitle) tTitle.textContent = "Pending & Active Reservations";
-        if (wStats) wStats.innerHTML = "";
-        if (tHead) tHead.innerHTML = `<tr><th>ID</th><th>Client</th><th>Items</th><th>Status</th></tr>`;
-        if (tBody) tBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">Reservation management module.</td></tr>`;
+        const reservations = await loadDashboardReservations();
+        renderReservationStats(reservations);
+        renderReservationTable(reservations);
+        return;
+    }
+
+    if (tabId === "inventory") {
+        wTitle.textContent = "Inventory Stock & Alerts";
+        wDesc.textContent = "Manage stock quantities, warning levels, and identify low stock levels.";
+        wActions.innerHTML = `<button class="btn btn-primary" onclick="openInventoryModal()">
+            Update Stock
+        </button>
+    `;
+
+        // Inventory data will be loaded from backend here
+        const inventory = await loadDashboardInventory();
+
+        renderInventoryTable(inventory);
+        renderInventoryStats(inventory);
+
         return;
     }
 
@@ -3490,7 +4473,9 @@ function getTabFriendlyName(tabId) {
         medicines: "Medicines",
         pharmacies: "Pharmacies",
         branches: "Branches",
-        reservations: "Reservations"
+        inventory: "Inventory",
+        reservations: "Reservations",
+
     };
 
     return names[tabId] || tabId;
@@ -3578,7 +4563,14 @@ function switchRole(role) {
                 </svg>
                 Branches
             </li>
+             <li class="sidebar-item" onclick="selectSidebarTab(this, 'inventory')">
+               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round"   stroke-linejoin="round" d="M3 7h18M3 7l2 14h14l2-14M8 7V5a4 4 0 018 0v2" />
+               </svg>
+                Inventory
+              </li>
         `;
+
         loadWorkspaceTab("branches");
 
     } else if (role === "PHARMACY_STAFF") {

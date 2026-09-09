@@ -134,9 +134,8 @@
 
     </main>
 
-    <!-- FLOATING ELEMENTS -->
     <!-- Floating Cart Icon -->
-    <div class="cart-floating" onclick="toggleDrawer('cart-drawer')" id="cart-float-btn">
+    <div class="cart-floating" onclick="toggleDrawer('cart-drawer-backdrop')" id="cart-float-btn">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
         </svg>
@@ -218,7 +217,7 @@
     </div>
 
     <!-- Drawer: Reservation Cart & Checkout -->
-    <div class="drawer-backdrop" id="cart-drawer-backdrop" onclick="closeDrawer('cart-drawer-backdrop')">
+    <div class="drawer-backdrop" id="cart-drawer-backdrop" onclick="toggleDrawer('cart-drawer-backdrop')">
         <div class="drawer" onclick="event.stopPropagation()">
             <div class="drawer-header">
                 <h2>Reservation Cart</h2>
@@ -231,6 +230,13 @@
 
             <div style="border-top: 1px solid var(--glass-border); padding-top: 1.5rem; margin-top: auto;">
                 <div class="form-group">
+                    <!-- Pharmacy Branch -->
+                    <div class="form-group">
+                        <label class="form-label" for="reservation-branch">Pharmacy Branch</label>
+                        <select class="form-control" id="reservation-branch" required>
+                            <option value="">Select Pharmacy Branch</option>
+                        </select>
+                    </div>
                     <label class="form-label" for="checkout-pickup">Scheduled Pickup Date & Time</label>
                     <input type="datetime-local" class="form-control" id="checkout-pickup" required>
                 </div>
@@ -240,7 +246,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                     <span style="font-weight: 600; color: var(--text-secondary);">Total Items</span>
-                    <span style="font-size: 1.25rem; font-weight: 700; color: var(--primary-light);" id="cart-total-qty">0 Items</span>
+                    <span style="font-size: 1.25rem; font-weight: 700; color: beige;" id="cart-total-qty">0 Items</span>
                 </div>
                 <button class="btn btn-primary" onclick="submitReservation()" style="width: 100%;">Confirm Reserve & Notify Branch</button>
             </div>
@@ -320,7 +326,7 @@
             <div class="glass-card" style="padding: 1rem; text-align: left; background: rgba(0,0,0,0.2); margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem;">
                     <span style="color: var(--text-muted);">Reservation Ref:</span>
-                    <strong style="color: var(--primary-light);" id="receipt-ref">RES-8823</strong>
+                    <strong style="color: beige" id="receipt-ref">RES-8823</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem;">
                     <span style="color: var(--text-muted);">Branch:</span>

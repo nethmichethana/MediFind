@@ -4,6 +4,19 @@
 
 const API_BASE_URL = "http://localhost:8080";
 
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 
 // ============================================================
 // APPLICATION STATE
@@ -11,6 +24,7 @@ const API_BASE_URL = "http://localhost:8080";
 
 let appState = {
     selectedCategory: "ALL",
+    selectedCategoryId: null,
     medicines: [],
     categories: [],
     cart: [],
@@ -121,6 +135,104 @@ async function apiFetch(endpoint, method = "GET", body = null) {
             message:
                 "Cannot connect to backend. Make sure Spring Boot is running on port 8080."
         };
+    }
+}
+
+// ============================================================
+// LOAD PHARMACY BRANCHES FOR RESERVATION
+// ============================================================
+
+async function loadReservationBranches() {
+
+    const branchSelect =
+        document.getElementById("reservation-branch");
+
+    if (!branchSelect) {
+        console.error(
+            "Reservation branch dropdown not found."
+        );
+        return;
+    }
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/pharmacy-branches",
+                "GET"
+            );
+
+        console.log(
+            "Pharmacy Branches API Response:",
+            response
+        );
+
+        // Clear existing options
+        branchSelect.innerHTML =
+            `<option value="">Select Pharmacy Branch</option>`;
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load pharmacy branches:",
+                response?.message
+            );
+
+            return;
+        }
+
+
+        const branches =
+            response.body || [];
+
+
+        if (branches.length === 0) {
+
+            branchSelect.innerHTML =
+                `<option value="">
+                    No pharmacy branches available
+                </option>`;
+
+            console.warn(
+                "No pharmacy branches found in database."
+            );
+
+            return;
+        }
+
+
+        branches.forEach(branch => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                branch.id;
+
+            option.textContent =
+                `${branch.name} - ${branch.city}`;
+
+            branchSelect.appendChild(option);
+
+        });
+
+
+        console.log(
+            "Pharmacy branches loaded:",
+            branches
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Error loading pharmacy branches:",
+            error
+        );
+
     }
 }
 
@@ -1096,13 +1208,13 @@ async function loadCatalogCategories() {
         const response = await apiFetch("/v1/medicine-categories", "GET");
 
         if (response && response.success && Array.isArray(response.body)) {
+            appState.categories = response.body;
             container.innerHTML = `<button class="tab-btn active" onclick="selectCategory('ALL', this)">All Categories</button>`;
             response.body.forEach(cat => {
                 const btn = document.createElement("button");
                 btn.className = "tab-btn";
                 btn.textContent = cat.name;
-                btn.onclick = function () {
-                    selectCategory(cat.id, this);
+                btn.onclick = function () {selectCategory(cat.id, this);
                 };
                 container.appendChild(btn);
             });
@@ -1112,24 +1224,59 @@ async function loadCatalogCategories() {
     }
 }
 
-function selectCategory(categoryId, tabElement) {
-    if (tabElement) {
-        document.querySelectorAll("#category-tabs .tab-btn").forEach(btn => {
-            btn.classList.remove("active");
-        });
-        tabElement.classList.add("active");
+// ============================================================
+// CATEGORY SELECTION
+// ============================================================
+function selectCategory(categoryName, buttonElement) {
+
+    // Save selected category name
+    appState.selectedCategory = categoryName;
+
+    // ALL category
+    if (categoryName === "ALL") {
+
+        appState.selectedCategoryId = null;
+
+    } else {
+
+        // Find category ID using category name
+        const selectedCategory =
+            appState.categories.find(category =>
+                String(category.name).toLowerCase() ===
+                String(categoryName).toLowerCase()
+            );
+
+        appState.selectedCategoryId =
+            selectedCategory
+                ? selectedCategory.id
+                : null;
     }
-    console.log("Selected category ID:", categoryId);
+
+    // Update active button
+    const categoryTabs =
+        document.getElementById("category-tabs");
+
+    if (categoryTabs) {
+
+        categoryTabs
+            .querySelectorAll(".tab-btn")
+            .forEach(button => {
+                button.classList.remove("active");
+            });
+
+        if (buttonElement) {
+            buttonElement.classList.add("active");
+        }
+    }
+
+    // Filter medicines
+    filterMedicines();
 }
-
-
-
 // ============================================================
 // LOAD MEDICINES FROM BACKEND
 // ============================================================
 
-async function loadMedicinesFromBackend() {
-
+async function loadMedicines() {
     try {
 
         const response =
@@ -1138,63 +1285,35 @@ async function loadMedicinesFromBackend() {
                 "GET"
             );
 
-
         console.log(
             "Medicines API Response:",
             response
         );
 
-
-        if (
-            !response ||
-            !response.success
-        ) {
+        if (!response || !response.success) {
 
             console.error(
                 "Failed to load medicines:",
-                response
+                response?.message
             );
 
-            showToast(
-                response?.message ||
-                "Unable to load medicines.",
-                "danger"
-            );
-
-            return [];
+            return;
         }
 
-
-        let medicines =
-            response.body || [];
-
+        let medicines = response.body;
 
         if (!Array.isArray(medicines)) {
-
-            if (
-                medicines &&
-                Array.isArray(
-                    medicines.content
-                )
-            ) {
-
-                medicines =
-                    medicines.content;
-
-            } else {
-
-                medicines = [];
-            }
+            medicines = [];
         }
 
+        appState.medicines = medicines;
 
         console.log(
-            "Medicines from Backend:",
+            "Medicines loaded:",
             medicines
         );
 
-
-        return medicines;
+        filterMedicines();
 
     } catch (error) {
 
@@ -1202,14 +1321,197 @@ async function loadMedicinesFromBackend() {
             "Error loading medicines:",
             error
         );
-
-        showToast(
-            "Unable to load medicines.",
-            "danger"
-        );
-
-        return [];
     }
+}
+
+function filterMedicines() {
+
+    const searchInput =
+        document.getElementById("catalog-search");
+
+    const searchText =
+        searchInput
+            ? searchInput.value.trim().toLowerCase()
+            : "";
+
+    const selectedCategoryId =
+        appState.selectedCategoryId;
+
+    let filteredMedicines =
+        Array.isArray(appState.medicines)
+            ? [...appState.medicines]
+            : [];
+
+    // CATEGORY FILTER
+    if (selectedCategoryId !== null) {
+
+        filteredMedicines =
+            filteredMedicines.filter(medicine => {
+
+                return Number(medicine.categoryId) ===
+                    Number(selectedCategoryId);
+
+            });
+    }
+
+    // SEARCH FILTER
+    if (searchText) {
+
+        filteredMedicines =
+            filteredMedicines.filter(medicine => {
+
+                return (
+                    (medicine.name || "")
+                        .toLowerCase()
+                        .includes(searchText)
+
+                    ||
+
+                    (medicine.genericName || "")
+                        .toLowerCase()
+                        .includes(searchText)
+
+                    ||
+
+                    (medicine.brandName || "")
+                        .toLowerCase()
+                        .includes(searchText)
+
+                    ||
+
+                    (medicine.description || "")
+                        .toLowerCase()
+                        .includes(searchText)
+                );
+
+            });
+    }
+
+    console.log(
+        "Filtered medicines:",
+        filteredMedicines
+    );
+
+    renderMedicineCatalog(
+        filteredMedicines
+    );
+}
+
+function renderMedicineCatalog(medicines) {
+
+    const grid =
+        document.getElementById("medicine-grid");
+
+    if (!grid) {
+        return;
+    }
+
+    grid.innerHTML = "";
+
+    if (
+        !Array.isArray(medicines) ||
+        medicines.length === 0
+    ) {
+
+        grid.innerHTML = `
+            <div style="
+                grid-column: 1 / -1;
+                text-align: center;
+                padding: 3rem;
+                color: var(--text-muted);
+            ">
+                <h3>No medicines found</h3>
+                <p>
+                    There are no medicines available
+                    in this category.
+                </p>
+            </div>
+        `;
+
+        return;
+    }
+
+    medicines.forEach(medicine => {
+
+        const category =
+            appState.categories.find(
+                c =>
+                    Number(c.id) ===
+                    Number(medicine.categoryId)
+            );
+
+        const categoryName =
+            category
+                ? category.name
+                : "Other";
+
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "medicine-card animate-fade";
+
+        card.innerHTML = `
+            <div class="med-category">
+               ${escapeHtml(categoryName)}
+            </div>
+
+            <h3>
+                ${escapeHtml(
+            medicine.name || ""
+        )}
+            </h3>
+
+            <p style="
+                color:var(--text-secondary);
+                font-size:0.85rem;
+            ">
+                ${escapeHtml(
+            medicine.genericName || ""
+        )}
+            </p>
+
+            <div style="
+                display:flex;
+                gap:8px;
+                flex-wrap:wrap;
+                margin-top:10px;
+            ">
+
+                <span class="badge badge-info">
+                    ${escapeHtml(
+            medicine.strength || ""
+        )}
+                </span>
+
+                <span class="badge badge-info">
+                    ${escapeHtml(
+            medicine.dosageForm || ""
+        )}
+                </span>
+
+                ${
+            medicine.prescriptionRequired
+                ? `
+                            <span class="badge badge-danger">
+                                Prescription Required
+                            </span>
+                          `
+                : ""
+        }
+                
+             <button
+                class="btn btn-primary"
+                onclick="addToCart(${medicine.id})"
+                style="width:100%; margin-top:15px;">
+                Reserve
+            </button>
+
+            </div>`;
+
+
+        grid.appendChild(card);
+    });
 }
 
 
@@ -1241,35 +1543,652 @@ document.addEventListener(
         // Load medicines from backend
         // ----------------------------------------------------
 
-        const medicines =
-            await loadMedicinesFromBackend();
-
-        // Save medicines into application state
-        appState.medicines =
-            medicines;
+        await loadMedicines();
 
         console.log(
             "Customer medicines loaded:",
             appState.medicines
         );
 
-        // ----------------------------------------------------
-        // Render medicines on Customer page
-        // ----------------------------------------------------
-
-        if (
-            typeof renderMedicineCatalog === "function"
-        ) {
-
-            renderMedicineCatalog();
-
-        } else if (
-            typeof filterMedicines === "function"
-        ) {
-
-            filterMedicines();
-
-        }
-
     }
 );
+
+function addToCart(medicineId) {
+
+    if (!appState.currentUser) {
+        showToast("Please login first.", "warning");
+        return;
+    }
+
+    const medicine = appState.medicines.find(
+        m => Number(m.id) === Number(medicineId)
+    );
+
+    if (!medicine) {
+        showToast("Medicine not found.", "danger");
+        return;
+    }
+
+    // Check whether medicine already exists
+    const existingItem = appState.cart.find(
+        item => Number(item.medicineId) === Number(medicine.id)
+    );
+
+    if (existingItem) {
+
+        existingItem.quantity += 1;
+
+    } else {
+
+        appState.cart.push({
+            medicineId: Number(medicine.id),
+            name: medicine.name,
+            quantity: 1,
+            unitPrice: Number(
+                medicine.price ||
+                medicine.unitPrice ||
+                0
+            )
+        });
+    }
+
+    // IMPORTANT
+    updateCartBadge();
+    renderReservationCart();
+
+    showToast(
+        `${medicine.name} added to reservation.`,
+        "success"
+    );
+
+    // Open actual cart drawer
+    toggleDrawer("cart-drawer");
+}
+
+
+
+function updateCartBadge() {
+
+    const badge =
+        document.getElementById("cart-badge-count");
+
+    if (!badge) return;
+
+    const totalItems =
+        appState.cart.reduce(
+            (total, item) =>
+                total + Number(item.quantity || 0),
+            0
+        );
+
+    badge.textContent = totalItems;
+}
+
+
+function openReservationModal() {
+
+    if (
+        !Array.isArray(appState.cart) ||
+        appState.cart.length === 0
+    ) {
+        showToast(
+            "Please select a medicine first.",
+            "warning"
+        );
+        return;
+    }
+
+
+    renderReservationCart();
+    updateCartBadge();
+    loadReservationBranches();
+
+    openModal("reservation-modal");
+}
+
+function renderReservationCart() {
+
+    const cartContainer = document.getElementById("cart-items-container");
+    const totalItemsElement = document.getElementById("cart-total-qty");
+
+    if (!cartContainer) {
+        console.warn(
+            "reservation-cart-items element not found."
+        );
+        return;
+    }
+
+    cartContainer.innerHTML = "";
+
+    if (
+        !Array.isArray(appState.cart) ||
+        appState.cart.length === 0
+    ) {
+
+        cartContainer.innerHTML = `
+            <div style="
+                text-align:center;
+                padding:2rem;
+                color:var(--text-muted);
+            ">
+                <p>No medicines added yet.</p>
+            </div>
+        `;
+
+        if (totalItemsElement) {
+            totalItemsElement.textContent = "0 Items";
+        }
+
+        return;
+    }
+
+    let totalQuantity = 0;
+
+    appState.cart.forEach((item, index) => {
+
+        const quantity =
+            Number(item.quantity || 1);
+
+        totalQuantity += quantity;
+
+        const itemElement =
+            document.createElement("div");
+
+        itemElement.className =
+            "reservation-cart-item";
+
+        itemElement.style.cssText = `
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:12px;
+            padding:12px;
+            margin-bottom:10px;
+            border:1px solid var(--glass-border);
+            border-radius:10px;
+        `;
+
+        itemElement.innerHTML = `
+
+            <div style="flex:1;">
+
+                <strong>
+                    ${escapeHtml(item.name)}
+                </strong>
+
+                <div style="
+                    color:var(--text-secondary);
+                    font-size:0.85rem;
+                    margin-top:4px;
+                ">
+                    Quantity: ${quantity}
+                </div>
+
+            </div>
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:6px;
+            ">
+
+                <button
+                    class="btn btn-secondary"
+                    onclick="decreaseCartItem(${index})">
+                    −
+                </button>
+
+                <span>
+                    ${quantity}
+                </span>
+
+                <button
+                    class="btn btn-secondary"
+                    onclick="increaseCartItem(${index})">
+                    +
+                </button>
+
+                <button
+                    class="btn btn-danger"
+                    onclick="removeFromCart(${index})">
+                    ×
+                </button>
+
+            </div>
+        `;
+
+        cartContainer.appendChild(itemElement);
+    });
+
+    if (totalItemsElement) {
+        totalItemsElement.textContent =
+            `${totalQuantity} Items`;
+    }
+}
+
+
+function increaseCartItem(index) {
+
+    if (!appState.cart[index]) return;
+
+    appState.cart[index].quantity += 1;
+
+    updateCartBadge();
+    renderReservationCart();
+}
+
+function decreaseCartItem(index) {
+
+    if (!appState.cart[index]) return;
+
+    appState.cart[index].quantity -= 1;
+
+    if (appState.cart[index].quantity <= 0) {
+        appState.cart.splice(index, 1);
+    }
+
+    updateCartBadge();
+    renderReservationCart();
+}
+
+function removeFromCart(index) {
+
+    if (!appState.cart[index]) return;
+
+    appState.cart.splice(index, 1);
+
+    updateCartBadge();
+    renderReservationCart();
+
+    showToast(
+        "Medicine removed from reservation cart.",
+        "info"
+    );
+}
+
+function toggleDrawer(id) {
+
+    // First try the exact ID
+    let drawer = document.getElementById(id);
+
+    // If not found, try ID + "-backdrop"
+    if (!drawer) {
+        drawer = document.getElementById(id + "-backdrop");
+    }
+
+    if (!drawer) {
+        console.error("Drawer not found:", id);
+        return;
+    }
+
+    const currentDisplay =
+        window.getComputedStyle(drawer).display;
+
+    drawer.style.display =
+        currentDisplay === "flex"
+            ? "none"
+            : "flex";
+}
+
+function closeDrawer(id) {
+
+    const drawer = document.getElementById(id);
+
+    if (!drawer) {
+        console.error("Drawer not found:", id);
+        return;
+    }
+
+    drawer.style.display = "none";
+}
+
+async function submitReservation() {
+
+    // --------------------------------------------------------
+    // Get reservation form elements safely
+    // --------------------------------------------------------
+
+    const pickupDateInput = document.getElementById("reservation-pickup-date");
+    const notesInput = document.getElementById("checkout-notes");
+    const pickupInput = pickupDateInput || document.getElementById("checkout-pickup");
+    const notesField = notesInput || document.getElementById("special-instructions");
+
+    // --------------------------------------------------------
+    // Validate required pickup date field
+    // --------------------------------------------------------
+
+    if (!pickupInput) {
+
+        console.error(
+            "Reservation error: Pickup date input element not found."
+        );
+
+        showToast(
+            "Pickup date field could not be found.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Read values safely
+    // --------------------------------------------------------
+
+    const pickupDate =
+        pickupInput.value
+            ? pickupInput.value.trim()
+            : "";
+
+    const notes =
+        notesField && notesField.value
+            ? notesField.value.trim()
+            : "";
+
+
+    // --------------------------------------------------------
+    // Validate cart
+    // --------------------------------------------------------
+
+    if (!appState.cart || appState.cart.length === 0) {
+
+        showToast(
+            "Your reservation cart is empty.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Validate logged-in user
+    // --------------------------------------------------------
+
+    const currentUser =
+        appState.currentUser ||
+        JSON.parse(
+            localStorage.getItem("medifind_session") || "null"
+        );
+
+    if (!currentUser) {
+
+        showToast(
+            "Please sign in before confirming your reservation.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Validate pickup date
+    // --------------------------------------------------------
+
+    if (!pickupDate) {
+
+        showToast(
+            "Please select a pickup date and time.",
+            "danger"
+        );
+
+        return;
+    }
+
+// --------------------------------------------------------
+// Get selected pharmacy branch
+// --------------------------------------------------------
+
+    const branchSelect = document.getElementById("reservation-branch");
+    const branchId = branchSelect ? branchSelect.value : null;
+
+
+// --------------------------------------------------------
+// Validate pharmacy branch
+// --------------------------------------------------------
+
+    if (!branchId) {
+        console.error("Reservation error: Pharmacy branch not selected.");
+        showToast("Please select a pharmacy branch.", "danger");
+
+        return;
+    }
+    // --------------------------------------------------------
+    // Create reservation request
+    // --------------------------------------------------------
+
+    const reservationRequest = {
+        reservationDate: new Date().toISOString(),
+        pickupDate: new Date(pickupDate).toISOString(),
+        status: "PENDING",
+        notes: notes,
+        userId: currentUser.userId || currentUser.id,
+        pharmacyBranchId: Number(branchId)
+    };
+    console.log("Reservation Request:", reservationRequest);
+
+    // --------------------------------------------------------
+    // Create Reservation
+    // --------------------------------------------------------
+
+    const reservationResponse =
+        await apiFetch(
+            "/v1/reservations",
+            "POST",
+            reservationRequest
+        );
+
+
+    if (
+        !reservationResponse ||
+        !reservationResponse.success ||
+        reservationResponse.httpStatus !== 200
+    ) {
+
+        console.error(
+            "Reservation API Error:",
+            reservationResponse
+        );
+
+        showToast(
+            reservationResponse?.message ||
+            "Failed to create reservation.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Reservation created
+    // --------------------------------------------------------
+
+    const reservation =
+        reservationResponse.body;
+
+
+    if (!reservation || !reservation.id) {
+
+        console.error(
+            "Invalid reservation response:",
+            reservation
+        );
+
+        showToast(
+            "Reservation was not created correctly.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Create Reservation Items
+    // --------------------------------------------------------
+
+    for (const cartItem of appState.cart) {
+
+        const itemRequest = {
+
+            quantity:
+                Number(cartItem.quantity || 1),
+
+            unitPrice:
+                Number(
+                    cartItem.unitPrice ||
+                    cartItem.price ||
+                    0
+                ),
+
+            reservationId:
+            reservation.id,
+
+            medicineId:
+                Number(
+                    cartItem.medicineId ||
+                    cartItem.id
+                )
+        };
+
+
+        console.log(
+            "Reservation Item Request:",
+            itemRequest
+        );
+
+
+        const itemResponse =
+            await apiFetch(
+                "/v1/reservation-items",
+                "POST",
+                itemRequest
+            );
+
+        if (
+            !itemResponse ||
+            !itemResponse.success ||
+            itemResponse.httpStatus !== 200
+        ) {
+
+            console.error(
+                "Reservation Item API Error:",
+                itemResponse
+            );
+
+            showToast(
+                "Reservation created, but a reservation item could not be saved.",
+                "danger"
+            );
+
+            return;
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // Clear cart
+    // --------------------------------------------------------
+
+    appState.cart = [];
+
+    localStorage.setItem(
+        "medifind_cart",
+        JSON.stringify([])
+    );
+
+
+    // --------------------------------------------------------
+    // Update cart UI
+    // --------------------------------------------------------
+
+    if (typeof updateCartUI === "function") {
+        updateCartUI();
+    }
+
+    if (typeof renderCart === "function") {
+        renderCart();
+    }
+
+
+    // --------------------------------------------------------
+    // Close reservation drawer/modal
+    // --------------------------------------------------------
+
+    if (typeof closeModal === "function") {
+
+        closeModal("reservation-modal");
+    }
+
+    if (typeof toggleDrawer === "function") {
+
+        toggleDrawer("reservation-cart");
+    }
+
+
+    // --------------------------------------------------------
+    // Show success
+    // --------------------------------------------------------
+
+    showToast(
+        "Reservation confirmed successfully.",
+        "success"
+    );
+
+
+    // --------------------------------------------------------
+    // Receipt
+    // --------------------------------------------------------
+
+    const receiptRef =
+        document.getElementById("receipt-ref");
+
+    if (receiptRef) {
+        receiptRef.textContent =
+            "RES-" + reservation.id;
+    }
+
+    const receiptPickup =
+        document.getElementById("receipt-pickup");
+
+    if (receiptPickup) {
+        receiptPickup.textContent =
+            new Date(pickupDate).toLocaleString();
+    }
+
+    const receiptModal =
+        document.getElementById("reservation-receipt-modal");
+
+    if (receiptModal) {
+        receiptModal.style.display = "flex";
+    }
+}
+async function loadCustomerReservations() {
+
+    if (!appState.currentUser) return;
+
+    const response =
+        await apiFetch("/reservations", "GET");
+
+    if (!response.success) return;
+
+    const reservations =
+        Array.isArray(response.body)
+            ? response.body.filter(
+                r =>
+                    Number(r.userId) ===
+                    Number(appState.currentUser.id)
+            )
+            : [];
+
+    console.log("My reservations:", reservations);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    loadReservationBranches();
+
+});

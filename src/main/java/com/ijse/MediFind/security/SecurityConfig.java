@@ -46,17 +46,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/v1/medicine-categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/v1/medicine-categories/**").hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/v1/medicines", "/v1/medicines/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF")
+
+                        .requestMatchers(HttpMethod.GET, "/v1/medicines").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/medicines/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/v1/medicines").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/v1/medicines/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/v1/medicines/**").hasRole("ADMIN")
 
 
-                         .requestMatchers(HttpMethod.GET, "/v1/pharmacies", "/v1/pharmacies/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF")
-                         .requestMatchers(HttpMethod.POST, "/v1/pharmacies").hasRole("ADMIN")
-                         .requestMatchers(HttpMethod.PUT, "/v1/pharmacies/**").hasRole("ADMIN")
-                         .requestMatchers(HttpMethod.DELETE, "/v1/pharmacies/**").hasRole("ADMIN")
-
+                        .requestMatchers(HttpMethod.GET, "/v1/pharmacies").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/v1/pharmacies").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/v1/pharmacies/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/pharmacies/**").hasRole("ADMIN")
 
                          .requestMatchers(HttpMethod.GET, "/v1/pharmacy-branches").permitAll()
                          .requestMatchers(HttpMethod.GET, "/v1/pharmacy-branches/**").permitAll()
@@ -64,8 +65,20 @@ public class SecurityConfig {
                          .requestMatchers(HttpMethod.PUT, "/v1/pharmacy-branches/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
                          .requestMatchers(HttpMethod.DELETE, "/v1/pharmacy-branches/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/v1/reports")
-                        .hasAnyRole("ADMIN", "PHARMACY_ADMIN")
+
+
+                         .requestMatchers(HttpMethod.POST, "/v1/reservations").hasRole("CUSTOMER").requestMatchers(HttpMethod.GET, "/v1/reservations","/v1/reservations/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF", "CUSTOMER")
+                         .requestMatchers(HttpMethod.PUT, "/v1/reservations/**").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
+                         .requestMatchers(HttpMethod.DELETE, "/v1/reservations/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+
+
+
+                        .requestMatchers(HttpMethod.POST, "/v1/reservation-items").hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "/v1/reservation-items", "/v1/reservation-items/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF", "CUSTOMER")
+                        .requestMatchers(HttpMethod.PUT, "/v1/reservation-items/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/reservation-items/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF")
+
+                        .requestMatchers(HttpMethod.GET, "/v1/reports").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/users").hasAnyRole("CUSTOMER")
                         .anyRequest().authenticated()
