@@ -5,6 +5,7 @@
 const API_BASE_URL = "http://localhost:8080";
 
 function escapeHtml(value) {
+
     if (value === null || value === undefined) {
         return "";
     }
@@ -23,22 +24,33 @@ function escapeHtml(value) {
 // ============================================================
 
 let appState = {
+
     selectedCategory: "ALL",
+
     selectedCategoryId: null,
+
     medicines: [],
+
     categories: [],
+
     cart: [],
+
     currentUser: null
 };
 
 
 // ============================================================
-// API FETCH HELPER
+// API AJAX HELPER - jQuery
 // ============================================================
 
-async function apiFetch(endpoint, method = "GET", body = null) {
+function apiFetch(
+    endpoint,
+    method = "GET",
+    body = null
+) {
 
-    const token = localStorage.getItem("medifind_token");
+    const token =
+        localStorage.getItem("medifind_token");
 
     const headers = {
         "Content-Type": "application/json"
@@ -46,96 +58,105 @@ async function apiFetch(endpoint, method = "GET", body = null) {
 
     // Add JWT token when available
     if (token) {
-        headers["Authorization"] = "Bearer " + token;
+
+        headers["Authorization"] =
+            "Bearer " + token;
     }
 
     const options = {
-        method: method,
-        headers: headers
+
+        url:
+            API_BASE_URL + endpoint,
+
+        type:
+        method,
+
+        headers:
+        headers,
+
+        dataType:
+            "json"
     };
 
     // Add request body
     if (body !== null) {
-        options.body = JSON.stringify(body);
+
+        options.data =
+            JSON.stringify(body);
     }
 
-    try {
-
-        const response = await fetch(
-            API_BASE_URL + endpoint,
-            options
-        );
-
-        const contentType =
-            response.headers.get("content-type");
-
-        let data;
-
-        if (
-            contentType &&
-            contentType.includes("application/json")
-        ) {
-            data = await response.json();
-        } else {
-            data = await response.text();
-        }
-
-
-        // ----------------------------------------------------
-        // Backend Error
-        // ----------------------------------------------------
-
-        if (!response.ok) {
-
-            console.error(
-                "API Error:",
-                response.status,
-                data
-            );
-
-            return {
-                success: false,
-                httpStatus: response.status,
-                status: data?.status ?? null,
-                body: null,
-                message:
-                    data?.message ||
-                    data?.error ||
-                    "Request failed."
-            };
-        }
-
+    return $.ajax(options)
 
         // ----------------------------------------------------
         // Backend Success
         // ----------------------------------------------------
 
-        return {
-            success: true,
-            httpStatus: response.status,
-            status: data?.status ?? null,
-            body: data?.body ?? data,
-            message:
-                data?.message ||
-                "Operation successful."
-        };
+        .then(function (
+            data,
+            textStatus,
+            jqXHR
+        ) {
 
-    } catch (error) {
+            return {
 
-        console.error(
-            "Backend connection error:",
-            error
-        );
+                success: true,
 
-        return {
-            success: false,
-            httpStatus: 0,
-            status: null,
-            body: null,
-            message:
-                "Cannot connect to backend. Make sure Spring Boot is running on port 8080."
-        };
-    }
+                httpStatus:
+                jqXHR.status,
+
+                status:
+                    data?.status ?? null,
+
+                body:
+                    data?.body ?? data,
+
+                message:
+                    data?.message ||
+                    "Operation successful."
+            };
+
+        })
+
+        // ----------------------------------------------------
+        // Backend Error
+        // ----------------------------------------------------
+
+        .catch(function (jqXHR) {
+
+            let data =
+                jqXHR.responseJSON;
+
+            if (!data) {
+
+                data =
+                    jqXHR.responseText;
+            }
+
+            console.error(
+                "API Error:",
+                jqXHR.status,
+                data
+            );
+
+            return {
+
+                success: false,
+
+                httpStatus:
+                    jqXHR.status || 0,
+
+                status:
+                    data?.status ?? null,
+
+                body:
+                    null,
+
+                message:
+                    data?.message ||
+                    data?.error ||
+                    "Request failed."
+            };
+        });
 }
 
 // ============================================================
@@ -144,86 +165,149 @@ async function apiFetch(endpoint, method = "GET", body = null) {
 
 async function loadReservationBranches() {
 
-    const branchSelect =
-        document.getElementById("reservation-branch");
+    const $branchSelect = $("#reservation-branch");
 
-    if (!branchSelect) {
+    console.log(
+        "Reservation branch dropdown found:",
+        $branchSelect.length
+    );
+
+    if ($branchSelect.length === 0) {
+
         console.error(
             "Reservation branch dropdown not found."
         );
+
         return;
     }
 
+    const token =
+        localStorage.getItem("medifind_token");
+
+    console.log(
+        "Loading pharmacy branches..."
+    );
+
     try {
 
-        const response =
-            await apiFetch(
+        const response = await $.ajax({
+
+            url:
+                API_BASE_URL +
                 "/v1/pharmacy-branches",
-                "GET"
-            );
+
+            type: "GET",
+
+            headers: token
+                ? {
+                    "Authorization":
+                        "Bearer " + token
+                }
+                : {},
+
+            dataType: "json"
+        });
 
         console.log(
             "Pharmacy Branches API Response:",
             response
         );
 
-        // Clear existing options
-        branchSelect.innerHTML =
-            `<option value="">Select Pharmacy Branch</option>`;
-
+        // ----------------------------------------------------
+        // CHECK COMMON RESPONSE STATUS
+        // ----------------------------------------------------
 
         if (
             !response ||
-            !response.success
+            response.status !== 0
         ) {
 
             console.error(
-                "Failed to load pharmacy branches:",
-                response?.message
+                "Pharmacy branches API failed:",
+                response
+            );
+
+            $branchSelect.html(
+                '<option value="">Unable to load branches</option>'
             );
 
             return;
         }
 
+        // ----------------------------------------------------
+        // GET BRANCHES
+        // ----------------------------------------------------
 
         const branches =
-            response.body || [];
-
-
-        if (branches.length === 0) {
-
-            branchSelect.innerHTML =
-                `<option value="">
-                    No pharmacy branches available
-                </option>`;
-
-            console.warn(
-                "No pharmacy branches found in database."
-            );
-
-            return;
-        }
-
-
-        branches.forEach(branch => {
-
-            const option =
-                document.createElement("option");
-
-            option.value =
-                branch.id;
-
-            option.textContent =
-                `${branch.name} - ${branch.city}`;
-
-            branchSelect.appendChild(option);
-
-        });
-
+            Array.isArray(response.body)
+                ? response.body
+                : [];
 
         console.log(
-            "Pharmacy branches loaded:",
+            "Number of branches:",
+            branches.length
+        );
+
+        console.log(
+            "Branches from database:",
             branches
+        );
+
+        // ----------------------------------------------------
+        // CLEAR OLD OPTIONS
+        // ----------------------------------------------------
+
+        $branchSelect.empty();
+
+        // ----------------------------------------------------
+        // DEFAULT OPTION
+        // ----------------------------------------------------
+
+        $branchSelect.append(
+            $("<option>", {
+                value: "",
+                text: "Select Pharmacy Branch"
+            })
+        );
+
+        // ----------------------------------------------------
+        // ADD DATABASE BRANCHES
+        // ----------------------------------------------------
+
+        $.each(
+            branches,
+            function (index, branch) {
+
+                console.log(
+                    "Branch " + index + ":",
+                    branch
+                );
+
+                const branchId =
+                    branch.id;
+
+                const branchName =
+                    branch.name ||
+                    branch.branchName ||
+                    branch.branch_name ||
+                    "Unnamed Branch";
+
+                $branchSelect.append(
+                    $("<option>", {
+                        value: branchId,
+                        text: branchName
+                    })
+                );
+            }
+        );
+
+        console.log(
+            "Dropdown options:",
+            $branchSelect.find("option").length
+        );
+
+        console.log(
+            "Pharmacy branch dropdown updated successfully."
         );
 
     } catch (error) {
@@ -233,100 +317,253 @@ async function loadReservationBranches() {
             error
         );
 
+        console.error(
+            "Status:",
+            error.status
+        );
+
+        console.error(
+            "Response:",
+            error.responseJSON
+        );
+
+        $branchSelect.html(
+            '<option value="">Failed to load branches</option>'
+        );
     }
 }
-
 
 // ============================================================
 // MODAL CONTROLS & NAVIGATION
 // ============================================================
 
 function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = "flex";
+
+    const $modal =
+        $("#" + modalId);
+
+    if ($modal.length > 0) {
+
+        $modal.css(
+            "display",
+            "flex"
+        );
+
+    } else {
+
+        console.error(
+            "Modal not found:",
+            modalId
+        );
     }
 }
+
 
 function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = "none";
+
+    const $modal =
+        $("#" + modalId);
+
+    if ($modal.length > 0) {
+
+        $modal.css(
+            "display",
+            "none"
+        );
+
+    } else {
+
+        console.error(
+            "Modal not found:",
+            modalId
+        );
     }
 }
+
 
 function showSection(sectionName) {
-    const catalogSec = document.getElementById("catalog-section");
-    const resSec = document.getElementById("reservations-section");
-    const loginSec = document.getElementById("login-section");
 
-    if (catalogSec) catalogSec.style.display = "none";
-    if (resSec) resSec.style.display = "none";
-    if (loginSec) loginSec.style.display = "none";
+    const $catalogSec =
+        $("#catalog-section");
+
+    const $resSec =
+        $("#reservations-section");
+
+    const $loginSec =
+        $("#login-section");
+
+
+    $catalogSec.hide();
+
+    $resSec.hide();
+
+    $loginSec.hide();
+
 
     if (sectionName === "catalog") {
-        if (catalogSec) catalogSec.style.display = "block";
-    } else if (sectionName === "reservations") {
-        if (resSec) resSec.style.display = "block";
-    } else if (sectionName === "login") {
-        if (loginSec) loginSec.style.display = "block";
-    } else if (sectionName === "signup") {
-        openModal("signup-modal");
-        if (catalogSec) catalogSec.style.display = "block";
+
+        $catalogSec.show();
+
+    } else if (
+        sectionName === "reservations"
+    ) {
+
+        $resSec.show();
+
+    } else if (
+        sectionName === "login"
+    ) {
+
+        $loginSec.show();
+
+    } else if (
+        sectionName === "signup"
+    ) {
+
+        openModal(
+            "signup-modal"
+        );
+
+        $catalogSec.show();
     }
 
-    document.querySelectorAll(".nav-links .nav-link").forEach(link => {
-        link.classList.remove("active");
-        if (link.getAttribute("onclick") && link.getAttribute("onclick").includes(sectionName)) {
-            link.classList.add("active");
-        }
-    });
-}
 
-function updateAuthUI() {
-    const userDisplay = document.getElementById("user-display");
-    const authButtons = document.getElementById("auth-buttons");
-    const userGreeting = document.getElementById("user-greeting");
-    const navDashboardLink = document.getElementById("nav-dashboard-link");
+    // Navigation active state
+    $(".nav-links .nav-link").each(
+        function () {
 
-    const user = appState.currentUser;
+            const $link =
+                $(this);
 
-    if (user && user.email) {
-        if (userDisplay) userDisplay.style.display = "flex";
-        if (authButtons) authButtons.style.display = "none";
-        if (userGreeting) {
-            userGreeting.textContent = `Welcome, ${user.name || user.email}`;
-        }
+            $link.removeClass(
+                "active"
+            );
 
-        const role = (user.role || "").toUpperCase();
-        if (navDashboardLink) {
-            if (role === "ADMIN" || role === "PHARMACY_ADMIN" || role === "PHARMACY_STAFF") {
-                navDashboardLink.style.display = "inline-block";
-            } else {
-                navDashboardLink.style.display = "none";
+            const onclickValue =
+                $link.attr(
+                    "onclick"
+                );
+
+            if (
+                onclickValue &&
+                onclickValue.includes(
+                    sectionName
+                )
+            ) {
+
+                $link.addClass(
+                    "active"
+                );
             }
         }
+    );
+}
+
+
+// ============================================================
+// UPDATE AUTH UI
+// ============================================================
+
+function updateAuthUI() {
+
+    const $userDisplay =
+        $("#user-display");
+
+    const $authButtons =
+        $("#auth-buttons");
+
+    const $userGreeting =
+        $("#user-greeting");
+
+    const $navDashboardLink =
+        $("#nav-dashboard-link");
+
+
+    const user =
+        appState.currentUser;
+
+
+    // Logged in
+    if (
+        user &&
+        user.email
+    ) {
+
+        $userDisplay.css(
+            "display",
+            "flex"
+        );
+
+        $authButtons.hide();
+
+        $userGreeting.text(
+            `Welcome, ${user.name || user.email}`
+        );
+
+
+        const role =
+            (user.role || "")
+                .toUpperCase();
+
+
+        if (
+            role === "ADMIN" ||
+            role === "PHARMACY_ADMIN" ||
+            role === "PHARMACY_STAFF"
+        ) {
+
+            $navDashboardLink.css(
+                "display",
+                "inline-block"
+            );
+
+        } else {
+
+            $navDashboardLink.hide();
+        }
+
+
     } else {
-        if (userDisplay) userDisplay.style.display = "none";
-        if (authButtons) authButtons.style.display = "flex";
-        if (navDashboardLink) navDashboardLink.style.display = "none";
+
+        // Logged out
+
+        $userDisplay.hide();
+
+        $authButtons.css(
+            "display",
+            "flex"
+        );
+
+        $navDashboardLink.hide();
     }
 }
 
-// Close modal when clicking outside
-window.addEventListener("click", function (event) {
-    if (event.target && event.target.classList && event.target.classList.contains("modal-backdrop")) {
-        event.target.style.display = "none";
+
+// ============================================================
+// CLOSE MODAL WHEN CLICKING OUTSIDE
+// ============================================================
+
+$(window).on(
+    "click",
+    function (event) {
+
+        if (
+            $(event.target)
+                .hasClass(
+                    "modal-backdrop"
+                )
+        ) {
+
+            $(event.target).hide();
+        }
     }
-});
+);
 
 
 // ============================================================
 // LOGIN
 // ============================================================
 
-
-// Login modal
 async function handleLogin() {
 
     await performLogin(
@@ -337,7 +574,10 @@ async function handleLogin() {
 }
 
 
-// Login page
+// ============================================================
+// LOGIN PAGE
+// ============================================================
+
 async function handlePageLogin() {
 
     await performLogin(
@@ -348,25 +588,35 @@ async function handlePageLogin() {
 }
 
 
-// Common login function
+// ============================================================
+// COMMON LOGIN FUNCTION
+// ============================================================
+
 async function performLogin(
     emailId,
     passwordId,
     isModal = false
 ) {
 
-    const emailInput =
-        document.getElementById(emailId);
+    // --------------------------------------------------------
+    // Get input fields
+    // --------------------------------------------------------
 
-    const passwordInput =
-        document.getElementById(passwordId);
+    const $emailInput =
+        $("#" + emailId);
+
+    const $passwordInput =
+        $("#" + passwordId);
 
 
     // --------------------------------------------------------
-    // Check form fields
+    // Check fields
     // --------------------------------------------------------
 
-    if (!emailInput || !passwordInput) {
+    if (
+        $emailInput.length === 0 ||
+        $passwordInput.length === 0
+    ) {
 
         showToast(
             "Login form fields not found.",
@@ -382,17 +632,24 @@ async function performLogin(
     // --------------------------------------------------------
 
     const email =
-        emailInput.value.trim();
+        $.trim(
+            $emailInput.val()
+        );
 
     const password =
-        passwordInput.value.trim();
+        $.trim(
+            $passwordInput.val()
+        );
 
 
     // --------------------------------------------------------
     // Validation
     // --------------------------------------------------------
 
-    if (!email || !password) {
+    if (
+        !email ||
+        !password
+    ) {
 
         showToast(
             "Please enter your email and password.",
@@ -403,11 +660,13 @@ async function performLogin(
     }
 
 
-    // Basic email validation
     const emailPattern =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailPattern.test(email)) {
+
+    if (
+        !emailPattern.test(email)
+    ) {
 
         showToast(
             "Please enter a valid email address.",
@@ -424,16 +683,19 @@ async function performLogin(
 
     const loginRequest = {
 
-        email: email,
+        email:
+        email,
 
-        password: password
+        password:
+        password
     };
 
 
     console.log(
         "Login Request:",
         {
-            email: email
+            email:
+            email
         }
     );
 
@@ -448,11 +710,59 @@ async function performLogin(
     // AJAX -> Spring Boot
     // --------------------------------------------------------
 
-    const response = await apiFetch(
-        "/v1/auth/login",
-        "POST",
-        loginRequest
-    );
+    let response;
+
+
+    try {
+
+        response =
+            await $.ajax({
+
+                url:
+                    API_BASE_URL +
+                    "/v1/auth/login",
+
+                type:
+                    "POST",
+
+                contentType:
+                    "application/json",
+
+                data:
+                    JSON.stringify(
+                        loginRequest
+                    ),
+
+                dataType:
+                    "json"
+            });
+
+    } catch (error) {
+
+        console.error(
+            "Login API Error:",
+            error
+        );
+
+
+        const errorResponse =
+            error.responseJSON;
+
+
+        showToast(
+            (
+                errorResponse &&
+                (
+                    errorResponse.message ||
+                    errorResponse.error
+                )
+            ) ||
+            "Invalid email or password.",
+            "danger"
+        );
+
+        return;
+    }
 
 
     console.log(
@@ -465,10 +775,13 @@ async function performLogin(
     // Login Failed
     // --------------------------------------------------------
 
-    if (!response.success) {
+    if (
+        !response ||
+        response.status !== 0
+    ) {
 
         showToast(
-            response.message ||
+            response?.message ||
             "Invalid email or password.",
             "danger"
         );
@@ -497,7 +810,7 @@ async function performLogin(
 
 
     // --------------------------------------------------------
-    // Get JWT Token
+    // JWT Token
     // --------------------------------------------------------
 
     const token =
@@ -526,13 +839,17 @@ async function performLogin(
 
     const user = {
 
-        id: loginData.userId,
+        id:
+        loginData.userId,
 
-        name: loginData.name,
+        name:
+        loginData.name,
 
-        email: loginData.email,
+        email:
+        loginData.email,
 
-        role: loginData.role
+        role:
+        loginData.role
     };
 
 
@@ -547,7 +864,7 @@ async function performLogin(
 
 
     // --------------------------------------------------------
-    // Save User Session
+    // Save Session
     // --------------------------------------------------------
 
     localStorage.setItem(
@@ -556,8 +873,14 @@ async function performLogin(
     );
 
 
-    // Update application state
-    appState.currentUser = user;
+    // --------------------------------------------------------
+    // Update State
+    // --------------------------------------------------------
+
+    appState.currentUser =
+        user;
+
+
     updateAuthUI();
 
 
@@ -573,19 +896,9 @@ async function performLogin(
 
     if (isModal) {
 
-        if (typeof closeModal === "function") {
-
-            closeModal("login-modal");
-
-        } else {
-
-            const modal =
-                document.getElementById("login-modal");
-
-            if (modal) {
-                modal.style.display = "none";
-            }
-        }
+        closeModal(
+            "login-modal"
+        );
     }
 
 
@@ -600,11 +913,12 @@ async function performLogin(
 
 
     // --------------------------------------------------------
-    // Role-based Navigation
+    // Role Navigation
     // --------------------------------------------------------
 
     const role =
-        (user.role || "").toUpperCase();
+        (user.role || "")
+            .toUpperCase();
 
 
     if (
@@ -613,30 +927,31 @@ async function performLogin(
         role === "PHARMACY_STAFF"
     ) {
 
-        // Internal dashboard
-        setTimeout(() => {
+        setTimeout(
+            function () {
 
-            window.location.href =
-                "dashboard.html";
+                window.location.href =
+                    "dashboard.html";
 
-        }, 700);
+            },
+            700
+        );
 
     } else {
 
-        // Customer
-        setTimeout(() => {
+        setTimeout(
+            function () {
 
-            if (
-                typeof showSection === "function"
-            ) {
+                showSection(
+                    "catalog"
+                );
 
-                showSection("catalog");
-
-            }
-
-        }, 700);
+            },
+            700
+        );
     }
-}
+
+} // ⭐ IMPORTANT: performLogin CLOSES HERE
 
 
 // ============================================================
@@ -645,17 +960,21 @@ async function performLogin(
 
 async function handleSignup() {
 
-    const nameInput =
-        document.getElementById("signup-name");
+    // --------------------------------------------------------
+    // Get form fields
+    // --------------------------------------------------------
 
-    const emailInput =
-        document.getElementById("signup-email");
+    const $nameInput =
+        $("#signup-name");
 
-    const phoneInput =
-        document.getElementById("signup-phone");
+    const $emailInput =
+        $("#signup-email");
 
-    const passwordInput =
-        document.getElementById("signup-password");
+    const $phoneInput =
+        $("#signup-phone");
+
+    const $passwordInput =
+        $("#signup-password");
 
 
     // --------------------------------------------------------
@@ -663,10 +982,10 @@ async function handleSignup() {
     // --------------------------------------------------------
 
     if (
-        !nameInput ||
-        !emailInput ||
-        !phoneInput ||
-        !passwordInput
+        $nameInput.length === 0 ||
+        $emailInput.length === 0 ||
+        $phoneInput.length === 0 ||
+        $passwordInput.length === 0
     ) {
 
         showToast(
@@ -683,16 +1002,24 @@ async function handleSignup() {
     // --------------------------------------------------------
 
     const name =
-        nameInput.value.trim();
+        $.trim(
+            $nameInput.val()
+        );
 
     const email =
-        emailInput.value.trim();
+        $.trim(
+            $emailInput.val()
+        );
 
     const phone =
-        phoneInput.value.trim();
+        $.trim(
+            $phoneInput.val()
+        );
 
     const password =
-        passwordInput.value.trim();
+        $.trim(
+            $passwordInput.val()
+        );
 
 
     // --------------------------------------------------------
@@ -715,11 +1042,13 @@ async function handleSignup() {
     }
 
 
-    // Email validation
     const emailPattern =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailPattern.test(email)) {
+
+    if (
+        !emailPattern.test(email)
+    ) {
 
         showToast(
             "Please enter a valid email address.",
@@ -730,8 +1059,9 @@ async function handleSignup() {
     }
 
 
-    // Password validation
-    if (password.length < 6) {
+    if (
+        password.length < 6
+    ) {
 
         showToast(
             "Password must contain at least 6 characters.",
@@ -752,23 +1082,36 @@ async function handleSignup() {
     );
 
 
-    const rolesResponse =
-        await apiFetch(
-            "/v1/roles",
-            "GET"
+    let rolesResponse;
+
+
+    try {
+
+        rolesResponse =
+            await $.ajax({
+
+                url:
+                    API_BASE_URL +
+                    "/v1/roles",
+
+                type:
+                    "GET",
+
+                contentType:
+                    "application/json",
+
+                dataType:
+                    "json"
+            });
+
+    } catch (error) {
+
+        console.error(
+            "Roles API Error:",
+            error
         );
 
-
-    console.log(
-        "Roles Response:",
-        rolesResponse
-    );
-
-
-    if (!rolesResponse.success) {
-
         showToast(
-            rolesResponse.message ||
             "Cannot load roles from backend.",
             "danger"
         );
@@ -777,11 +1120,34 @@ async function handleSignup() {
     }
 
 
-    const roles =
+    console.log(
+        "Roles Response:",
+        rolesResponse
+    );
+
+
+    if (
+        !rolesResponse ||
+        rolesResponse.status !== 0
+    ) {
+
+        showToast(
+            rolesResponse?.message ||
+            "Cannot load roles from backend.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    let roles =
         rolesResponse.body;
 
 
-    if (!Array.isArray(roles)) {
+    if (
+        !Array.isArray(roles)
+    ) {
 
         console.error(
             "Invalid roles response:",
@@ -798,41 +1164,164 @@ async function handleSignup() {
 
 
     // --------------------------------------------------------
-    // Find CUSTOMER role
+    // Find CUSTOMER
     // --------------------------------------------------------
 
     let customerRole =
-        roles.find(role => {
+        roles.find(
+            function (role) {
 
-            const roleName =
-                role.roleName ||
-                role.name;
+                const roleName =
+                    role.roleName ||
+                    role.name;
 
-            return (
-                roleName &&
-                roleName.toUpperCase() === "CUSTOMER"
-            );
-        });
+                return (
+                    roleName &&
+                    roleName
+                        .toUpperCase() ===
+                    "CUSTOMER"
+                );
+            }
+        );
 
+
+    // --------------------------------------------------------
+    // Create CUSTOMER if missing
+    // --------------------------------------------------------
 
     if (!customerRole) {
 
         console.log(
-            "CUSTOMER role not found in database. Auto-creating CUSTOMER role..."
+            "CUSTOMER role not found. Creating..."
         );
 
-        const createRoleRes = await apiFetch("/v1/roles", "POST", {
-            roleName: "CUSTOMER"
-        });
 
-        if (createRoleRes.success) {
-            const recheck = await apiFetch("/v1/roles", "GET");
-            if (recheck.success && Array.isArray(recheck.body)) {
-                customerRole = recheck.body.find(r => (r.roleName || r.name)?.toUpperCase() === "CUSTOMER");
+        let createRoleRes;
+
+
+        try {
+
+            createRoleRes =
+                await $.ajax({
+
+                    url:
+                        API_BASE_URL +
+                        "/v1/roles",
+
+                    type:
+                        "POST",
+
+                    contentType:
+                        "application/json",
+
+                    dataType:
+                        "json",
+
+                    data:
+                        JSON.stringify({
+
+                            roleName:
+                                "CUSTOMER"
+                        })
+                });
+
+        } catch (error) {
+
+            console.error(
+                "Create CUSTOMER Role Error:",
+                error
+            );
+
+            showToast(
+                "Cannot create CUSTOMER role.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        console.log(
+            "Create Role Response:",
+            createRoleRes
+        );
+
+
+        if (
+            createRoleRes &&
+            createRoleRes.status === 0
+        ) {
+
+            try {
+
+                rolesResponse =
+                    await $.ajax({
+
+                        url:
+                            API_BASE_URL +
+                            "/v1/roles",
+
+                        type:
+                            "GET",
+
+                        contentType:
+                            "application/json",
+
+                        dataType:
+                            "json"
+                    });
+
+
+                if (
+                    rolesResponse.status === 0 &&
+                    Array.isArray(
+                        rolesResponse.body
+                    )
+                ) {
+
+                    roles =
+                        rolesResponse.body;
+
+
+                    customerRole =
+                        roles.find(
+                            function (role) {
+
+                                const roleName =
+                                    role.roleName ||
+                                    role.name;
+
+                                return (
+                                    roleName &&
+                                    roleName
+                                        .toUpperCase() ===
+                                    "CUSTOMER"
+                                );
+                            }
+                        );
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Role Recheck Error:",
+                    error
+                );
+
+                showToast(
+                    "Cannot reload roles from backend.",
+                    "danger"
+                );
+
+                return;
             }
         }
     }
 
+
+    // --------------------------------------------------------
+    // CUSTOMER role not found
+    // --------------------------------------------------------
 
     if (!customerRole) {
 
@@ -856,35 +1345,46 @@ async function handleSignup() {
 
     const userRequest = {
 
-        name: name,
+        name:
+        name,
 
-        email: email,
+        email:
+        email,
 
-        password: password,
+        password:
+        password,
 
-        phone: phone,
+        phone:
+        phone,
 
-        status: "ACTIVE",
+        status:
+            "ACTIVE",
 
-        roleId: customerRole.id
+        roleId:
+        customerRole.id
     };
 
 
     console.log(
         "Signup Request:",
         {
-            name: name,
-            email: email,
-            phone: phone,
-            status: "ACTIVE",
-            roleId: customerRole.id
+            name:
+            name,
+
+            email:
+            email,
+
+            phone:
+            phone,
+
+            status:
+                "ACTIVE",
+
+            roleId:
+            customerRole.id
         }
     );
 
-
-    // --------------------------------------------------------
-    // Send Signup Request
-    // --------------------------------------------------------
 
     showToast(
         "Creating your account...",
@@ -892,12 +1392,63 @@ async function handleSignup() {
     );
 
 
-    const response =
-        await apiFetch(
-            "/v1/users",
-            "POST",
-            userRequest
+    // --------------------------------------------------------
+    // Create User
+    // --------------------------------------------------------
+
+    let response;
+
+
+    try {
+
+        response =
+            await $.ajax({
+
+                url:
+                    API_BASE_URL +
+                    "/v1/users",
+
+                type:
+                    "POST",
+
+                contentType:
+                    "application/json",
+
+                dataType:
+                    "json",
+
+                data:
+                    JSON.stringify(
+                        userRequest
+                    )
+            });
+
+    } catch (error) {
+
+        console.error(
+            "Signup API Error:",
+            error
         );
+
+
+        const errorResponse =
+            error.responseJSON;
+
+
+        showToast(
+            (
+                errorResponse &&
+                (
+                    errorResponse.message ||
+                    errorResponse.error
+                )
+            ) ||
+            "Unable to create account.",
+            "danger"
+        );
+
+        return;
+    }
 
 
     console.log(
@@ -910,10 +1461,13 @@ async function handleSignup() {
     // Signup Failed
     // --------------------------------------------------------
 
-    if (!response.success) {
+    if (
+        !response ||
+        response.status !== 0
+    ) {
 
         showToast(
-            response.message ||
+            response?.message ||
             "Unable to create account.",
             "danger"
         );
@@ -939,73 +1493,55 @@ async function handleSignup() {
 
 
     // --------------------------------------------------------
-    // Clear Signup Form
+    // Clear Form
     // --------------------------------------------------------
 
-    nameInput.value = "";
+    $nameInput.val("");
 
-    emailInput.value = "";
+    $emailInput.val("");
 
-    phoneInput.value = "";
+    $phoneInput.val("");
 
-    passwordInput.value = "";
+    $passwordInput.val("");
 
 
     // --------------------------------------------------------
     // Close Signup Modal
     // --------------------------------------------------------
 
-    if (
-        typeof closeModal === "function"
-    ) {
-
-        closeModal("signup-modal");
-
-    } else {
-
-        const signupModal =
-            document.getElementById("signup-modal");
-
-        if (signupModal) {
-            signupModal.style.display = "none";
-        }
-    }
+    closeModal(
+        "signup-modal"
+    );
 
 
     // --------------------------------------------------------
     // Open Login Modal
     // --------------------------------------------------------
 
-    setTimeout(() => {
+    setTimeout(
+        function () {
 
-        if (
-            typeof openModal === "function"
-        ) {
+            openModal(
+                "login-modal"
+            );
 
-            openModal("login-modal");
 
-        } else {
+            const $loginEmail =
+                $("#login-email");
 
-            const loginModal =
-                document.getElementById("login-modal");
 
-            if (loginModal) {
-                loginModal.style.display = "flex";
+            if (
+                $loginEmail.length > 0
+            ) {
+
+                $loginEmail.val(
+                    email
+                );
             }
-        }
 
-
-        // Put registered email into login field
-        const loginEmail =
-            document.getElementById("login-email");
-
-        if (loginEmail) {
-
-            loginEmail.value =
-                email;
-        }
-
-    }, 500);
+        },
+        500
+    );
 }
 
 
@@ -1023,7 +1559,11 @@ function handleLogout() {
         "medifind_session"
     );
 
-    appState.currentUser = null;
+
+    appState.currentUser =
+        null;
+
+
     updateAuthUI();
 
 
@@ -1033,12 +1573,15 @@ function handleLogout() {
     );
 
 
-    setTimeout(() => {
+    setTimeout(
+        function () {
 
-        window.location.href =
-            "index.html";
+            window.location.href =
+                "index.html";
 
-    }, 500);
+        },
+        500
+    );
 }
 
 
@@ -1056,7 +1599,9 @@ function loadSavedSession() {
 
     if (!savedSession) {
 
-        appState.currentUser = null;
+        appState.currentUser =
+            null;
+
         updateAuthUI();
 
         return;
@@ -1066,12 +1611,17 @@ function loadSavedSession() {
     try {
 
         appState.currentUser =
-            JSON.parse(savedSession);
+            JSON.parse(
+                savedSession
+            );
+
 
         console.log(
             "Saved session loaded:",
             appState.currentUser
         );
+
+
         updateAuthUI();
 
     } catch (error) {
@@ -1081,11 +1631,16 @@ function loadSavedSession() {
             error
         );
 
+
         localStorage.removeItem(
             "medifind_session"
         );
 
-        appState.currentUser = null;
+
+        appState.currentUser =
+            null;
+
+
         updateAuthUI();
     }
 }
@@ -1100,133 +1655,230 @@ function showToast(
     type = "success"
 ) {
 
-    const toast =
-        document.createElement("div");
+    const $toast =
+        $("<div></div>");
 
 
-    toast.style.position =
-        "fixed";
+    $toast.css({
 
-    toast.style.bottom =
-        "2rem";
+        position:
+            "fixed",
 
-    toast.style.left =
-        "2rem";
+        bottom:
+            "2rem",
 
-    toast.style.padding =
-        "0.75rem 1.5rem";
+        left:
+            "2rem",
 
-    toast.style.borderRadius =
-        "8px";
+        padding:
+            "0.75rem 1.5rem",
 
-    toast.style.zIndex =
-        "10000";
+        borderRadius:
+            "8px",
 
-    toast.style.fontWeight =
-        "600";
+        zIndex:
+            "10000",
 
-    toast.style.boxShadow =
-        "0 8px 30px rgba(0,0,0,0.5)";
+        fontWeight:
+            "600",
 
-    toast.style.transition =
-        "opacity 0.4s";
+        boxShadow:
+            "0 8px 30px rgba(0,0,0,0.5)",
+
+        transition:
+            "opacity 0.4s",
+
+        color:
+            "white"
+    });
 
 
-    if (type === "success") {
+    if (
+        type === "success"
+    ) {
 
-        toast.style.background =
-            "var(--accent-emerald, #10b981)";
+        $toast.css(
+            "background",
+            "var(--accent-emerald, #10b981)"
+        );
 
-        toast.style.color =
-            "white";
+    } else if (
+        type === "danger"
+    ) {
 
-    } else if (type === "danger") {
+        $toast.css(
+            "background",
+            "var(--accent-rose, #f43f5e)"
+        );
 
-        toast.style.background =
-            "var(--accent-rose, #f43f5e)";
+    } else if (
+        type === "warning"
+    ) {
 
-        toast.style.color =
-            "white";
-
-    } else if (type === "warning") {
-
-        toast.style.background =
-            "var(--accent-amber, #f59e0b)";
-
-        toast.style.color =
-            "white";
+        $toast.css(
+            "background",
+            "var(--accent-amber, #f59e0b)"
+        );
 
     } else {
 
-        toast.style.background =
-            "#1e293b";
-
-        toast.style.color =
-            "white";
+        $toast.css(
+            "background",
+            "#1e293b"
+        );
     }
 
 
-    toast.textContent =
-        message;
-
-
-    document.body.appendChild(
-        toast
+    $toast.text(
+        message
     );
 
 
-    setTimeout(() => {
+    $("body").append(
+        $toast
+    );
 
-        toast.style.opacity =
-            "0";
+
+    setTimeout(
+        function () {
+
+            $toast.css(
+                "opacity",
+                "0"
+            );
 
 
-        setTimeout(() => {
+            setTimeout(
+                function () {
 
-            if (toast.parentNode) {
+                    $toast.remove();
 
-                toast.parentNode.removeChild(
-                    toast
-                );
-            }
+                },
+                400
+            );
 
-        }, 400);
-
-    }, 3000);
+        },
+        3000
+    );
 }
 
+
+// ============================================================
+// GLOBAL FUNCTIONS FOR HTML ONCLICK
+// ============================================================
+
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.showSection = showSection;
+window.handleLogin = handleLogin;
+window.handlePageLogin = handlePageLogin;
+window.handleSignup = handleSignup;
+window.handleLogout = handleLogout;
+window.loadReservationBranches = loadReservationBranches;
+window.loadSavedSession = loadSavedSession;
+window.showToast = showToast;
 
 // ============================================================
 // MEDICINE CATEGORIES (CATALOG VIEW)
 // ============================================================
 
 async function loadCatalogCategories() {
-    const container = document.getElementById("category-tabs");
-    if (!container) return;
+
+    const $container = $("#category-tabs");
+
+    if ($container.length === 0) {
+        return;
+    }
+
+    const token = localStorage.getItem("medifind_token");
 
     try {
-        const response = await apiFetch("/v1/medicine-categories", "GET");
 
-        if (response && response.success && Array.isArray(response.body)) {
+        const response = await $.ajax({
+
+            url: API_BASE_URL + "/v1/medicine-categories",
+
+            type: "GET",
+
+            headers: token
+                ? {
+                    "Authorization": "Bearer " + token
+                }
+                : {},
+
+            dataType: "json"
+
+        });
+
+        console.log("Catalog Categories Response:", response);
+
+        // Spring Boot CommonResponse
+        if (
+            response &&
+            response.status === 0 &&
+            Array.isArray(response.body)
+        ) {
+
             appState.categories = response.body;
-            container.innerHTML = `<button class="tab-btn active" onclick="selectCategory('ALL', this)">All Categories</button>`;
-            response.body.forEach(cat => {
-                const btn = document.createElement("button");
-                btn.className = "tab-btn";
-                btn.textContent = cat.name;
-                btn.onclick = function () {selectCategory(cat.id, this);
-                };
-                container.appendChild(btn);
+
+            // Clear existing categories
+            $container.empty();
+
+            // All Categories button
+            $container.append(`
+                <button
+                    class="tab-btn active"
+                    onclick="selectCategory('ALL', this)">
+                    All Categories
+                </button>
+            `);
+
+            // Load categories from DATABASE
+            $.each(response.body, function (index, cat) {
+
+                const $btn = $("<button>", {
+                    class: "tab-btn",
+                    text: cat.name
+                });
+
+                $btn.on("click", function () {
+                    selectCategory(cat.id, this);
+                });
+
+                $container.append($btn);
+
             });
+
+        } else {
+
+            console.error(
+                "Failed to load medicine categories:",
+                response
+            );
+
+            showToast(
+                response?.message || "Failed to load categories.",
+                "danger"
+            );
         }
+
     } catch (error) {
-        console.error("Error loading catalog categories:", error);
+
+        console.error(
+            "Error loading catalog categories:",
+            error
+        );
+
+        showToast(
+            "Unable to load medicine categories from server.",
+            "danger"
+        );
     }
 }
-
 // ============================================================
 // CATEGORY SELECTION
 // ============================================================
+
 function selectCategory(categoryName, buttonElement) {
 
     // Save selected category name
@@ -1240,11 +1892,14 @@ function selectCategory(categoryName, buttonElement) {
     } else {
 
         // Find category ID using category name
-        const selectedCategory =
-            appState.categories.find(category =>
-                String(category.name).toLowerCase() ===
-                String(categoryName).toLowerCase()
-            );
+        const selectedCategory = appState.categories.find(
+            function (category) {
+
+                return String(category.name).toLowerCase() ===
+                    String(categoryName).toLowerCase();
+
+            }
+        );
 
         appState.selectedCategoryId =
             selectedCategory
@@ -1252,24 +1907,20 @@ function selectCategory(categoryName, buttonElement) {
                 : null;
     }
 
-    // Update active button
-    const categoryTabs =
-        document.getElementById("category-tabs");
+    // ========================================================
+    // UPDATE ACTIVE CATEGORY BUTTON
+    // ========================================================
 
-    if (categoryTabs) {
+    $("#category-tabs .tab-btn").removeClass("active");
 
-        categoryTabs
-            .querySelectorAll(".tab-btn")
-            .forEach(button => {
-                button.classList.remove("active");
-            });
-
-        if (buttonElement) {
-            buttonElement.classList.add("active");
-        }
+    if (buttonElement) {
+        $(buttonElement).addClass("active");
     }
 
-    // Filter medicines
+    // ========================================================
+    // FILTER MEDICINES
+    // ========================================================
+
     filterMedicines();
 }
 // ============================================================
@@ -1277,28 +1928,54 @@ function selectCategory(categoryName, buttonElement) {
 // ============================================================
 
 async function loadMedicines() {
+
+    const token = localStorage.getItem("medifind_token");
+
     try {
 
-        const response =
-            await apiFetch(
-                "/v1/medicines",
-                "GET"
-            );
+        const response = await $.ajax({
+
+            url: API_BASE_URL + "/v1/medicines",
+
+            type: "GET",
+
+            headers: token
+                ? {
+                    "Authorization": "Bearer " + token
+                }
+                : {},
+
+            dataType: "json"
+
+        });
 
         console.log(
             "Medicines API Response:",
             response
         );
 
-        if (!response || !response.success) {
+        // ====================================================
+        // CHECK SPRING BOOT COMMON RESPONSE
+        // ====================================================
+
+        if (!response || response.status !== 0) {
 
             console.error(
                 "Failed to load medicines:",
                 response?.message
             );
 
+            showToast(
+                response?.message || "Failed to load medicines.",
+                "danger"
+            );
+
             return;
         }
+
+        // ====================================================
+        // GET MEDICINES FROM DATABASE RESPONSE
+        // ====================================================
 
         let medicines = response.body;
 
@@ -1306,12 +1983,17 @@ async function loadMedicines() {
             medicines = [];
         }
 
+        // Save backend medicines to application state
         appState.medicines = medicines;
 
         console.log(
-            "Medicines loaded:",
+            "Medicines loaded from database:",
             medicines
         );
+
+        // ====================================================
+        // FILTER / DISPLAY MEDICINES
+        // ====================================================
 
         filterMedicines();
 
@@ -1321,32 +2003,50 @@ async function loadMedicines() {
             "Error loading medicines:",
             error
         );
+
+        showToast(
+            "Unable to load medicines from server.",
+            "danger"
+        );
     }
 }
 
+
+// ============================================================
+// FILTER MEDICINES
+// ============================================================
+
 function filterMedicines() {
 
-    const searchInput =
-        document.getElementById("catalog-search");
+    // ========================================================
+    // GET SEARCH TEXT
+    // ========================================================
 
-    const searchText =
-        searchInput
-            ? searchInput.value.trim().toLowerCase()
-            : "";
+    const searchText = $("#catalog-search")
+        .val()
+        ?.trim()
+        .toLowerCase() || "";
 
     const selectedCategoryId =
         appState.selectedCategoryId;
+
+    // ========================================================
+    // GET MEDICINES FROM APP STATE
+    // ========================================================
 
     let filteredMedicines =
         Array.isArray(appState.medicines)
             ? [...appState.medicines]
             : [];
 
+    // ========================================================
     // CATEGORY FILTER
+    // ========================================================
+
     if (selectedCategoryId !== null) {
 
         filteredMedicines =
-            filteredMedicines.filter(medicine => {
+            filteredMedicines.filter(function (medicine) {
 
                 return Number(medicine.categoryId) ===
                     Number(selectedCategoryId);
@@ -1354,13 +2054,17 @@ function filterMedicines() {
             });
     }
 
+    // ========================================================
     // SEARCH FILTER
+    // ========================================================
+
     if (searchText) {
 
         filteredMedicines =
-            filteredMedicines.filter(medicine => {
+            filteredMedicines.filter(function (medicine) {
 
                 return (
+
                     (medicine.name || "")
                         .toLowerCase()
                         .includes(searchText)
@@ -1382,38 +2086,53 @@ function filterMedicines() {
                     (medicine.description || "")
                         .toLowerCase()
                         .includes(searchText)
+
                 );
 
             });
     }
+
+    // ========================================================
+    // DEBUG
+    // ========================================================
 
     console.log(
         "Filtered medicines:",
         filteredMedicines
     );
 
-    renderMedicineCatalog(
-        filteredMedicines
-    );
+    // ========================================================
+    // RENDER MEDICINES
+    // ========================================================
+
+    renderMedicineCatalog(filteredMedicines);
 }
+
+// ============================================================
+// RENDER MEDICINE CATALOG
+// ============================================================
 
 function renderMedicineCatalog(medicines) {
 
-    const grid =
-        document.getElementById("medicine-grid");
+    const $grid = $("#medicine-grid");
 
-    if (!grid) {
+    if ($grid.length === 0) {
         return;
     }
 
-    grid.innerHTML = "";
+    // Clear existing cards
+    $grid.empty();
+
+    // ========================================================
+    // NO MEDICINES
+    // ========================================================
 
     if (
         !Array.isArray(medicines) ||
         medicines.length === 0
     ) {
 
-        grid.innerHTML = `
+        $grid.html(`
             <div style="
                 grid-column: 1 / -1;
                 text-align: center;
@@ -1421,45 +2140,53 @@ function renderMedicineCatalog(medicines) {
                 color: var(--text-muted);
             ">
                 <h3>No medicines found</h3>
+
                 <p>
                     There are no medicines available
                     in this category.
                 </p>
             </div>
-        `;
+        `);
 
         return;
     }
 
-    medicines.forEach(medicine => {
+    // ========================================================
+    // RENDER MEDICINES
+    // ========================================================
 
+    $.each(medicines, function (index, medicine) {
+
+        // Find category from appState
         const category =
-            appState.categories.find(
-                c =>
-                    Number(c.id) ===
-                    Number(medicine.categoryId)
-            );
+            appState.categories.find(function (c) {
+
+                return Number(c.id) ===
+                    Number(medicine.categoryId);
+
+            });
 
         const categoryName =
             category
                 ? category.name
                 : "Other";
 
-        const card =
-            document.createElement("div");
+        // ====================================================
+        // CREATE MEDICINE CARD
+        // ====================================================
 
-        card.className =
-            "medicine-card animate-fade";
+        const $card = $("<div>", {
+            class: "medicine-card animate-fade"
+        });
 
-        card.innerHTML = `
+        $card.html(`
+
             <div class="med-category">
-               ${escapeHtml(categoryName)}
+                ${escapeHtml(categoryName)}
             </div>
 
             <h3>
-                ${escapeHtml(
-            medicine.name || ""
-        )}
+                ${escapeHtml(medicine.name || "")}
             </h3>
 
             <p style="
@@ -1499,173 +2226,248 @@ function renderMedicineCatalog(medicines) {
                           `
                 : ""
         }
-                
-             <button
-                class="btn btn-primary"
-                onclick="addToCart(${medicine.id})"
-                style="width:100%; margin-top:15px;">
-                Reserve
-            </button>
 
-            </div>`;
+                <button
+                    class="btn btn-primary reserve-medicine-btn"
+                    data-medicine-id="${medicine.id}"
+                    style="width:100%; margin-top:15px;">
+                    Reserve
+                </button>
 
+            </div>
+        `);
 
-        grid.appendChild(card);
+        // ====================================================
+        // RESERVE BUTTON CLICK
+        // ====================================================
+
+        $card.find(".reserve-medicine-btn").on(
+            "click",
+            function () {
+
+                const medicineId =
+                    $(this).data("medicine-id");
+
+                addToCart(medicineId);
+            }
+        );
+
+        // Add card to grid
+        $grid.append($card);
     });
 }
+
+
 
 
 // ============================================================
 // APPLICATION INITIALIZATION
 // ============================================================
 
-document.addEventListener(
-    "DOMContentLoaded",
-    async function () {
+$(document).ready(async function () {
 
-        console.log(
-            "MediFind application initialized."
-        );
+    console.log(
+        "MediFind application initialized."
+    );
 
-        // ----------------------------------------------------
-        // Load saved login session
-        // ----------------------------------------------------
+    // --------------------------------------------------------
+    // Load saved login session
+    // --------------------------------------------------------
 
-        loadSavedSession();
+    loadSavedSession();
 
-        // ----------------------------------------------------
-        // Load medicine categories from backend
-        // ----------------------------------------------------
+    // --------------------------------------------------------
+    // Load medicine categories from backend
+    // --------------------------------------------------------
 
-        await loadCatalogCategories();
+    await loadCatalogCategories();
 
-        // ----------------------------------------------------
-        // Load medicines from backend
-        // ----------------------------------------------------
+    // --------------------------------------------------------
+    // Load medicines from backend
+    // --------------------------------------------------------
 
-        await loadMedicines();
+    await loadMedicines();
 
-        console.log(
-            "Customer medicines loaded:",
-            appState.medicines
-        );
+    console.log(
+        "Customer medicines loaded:",
+        appState.medicines
+    );
 
-    }
-);
+});
+
+// ============================================================
+// ADD MEDICINE TO RESERVATION CART
+// ============================================================
 
 function addToCart(medicineId) {
 
-    if (!appState.currentUser) {
-        showToast("Please login first.", "warning");
-        return;
-    }
+    console.log("Adding medicine to cart:", medicineId);
 
-    const medicine = appState.medicines.find(
-        m => Number(m.id) === Number(medicineId)
-    );
+    const medicine = appState.medicines.find(function (item) {
+        return Number(item.id) === Number(medicineId);
+    });
 
     if (!medicine) {
-        showToast("Medicine not found.", "danger");
+        console.error("Medicine not found:", medicineId);
+        showToast("Medicine could not be found.", "danger");
         return;
     }
 
-    // Check whether medicine already exists
-    const existingItem = appState.cart.find(
-        item => Number(item.medicineId) === Number(medicine.id)
-    );
+    const existingItem = appState.cart.find(function (item) {
+        return Number(item.medicineId || item.id) === Number(medicineId);
+    });
 
     if (existingItem) {
 
-        existingItem.quantity += 1;
+        existingItem.quantity =
+            Number(existingItem.quantity || 0) + 1;
 
     } else {
 
-        appState.cart.push({
-            medicineId: Number(medicine.id),
-            name: medicine.name,
-            quantity: 1,
-            unitPrice: Number(
-                medicine.price ||
+        const price =
+            Number(
                 medicine.unitPrice ||
+                medicine.price ||
                 0
-            )
+            );
+
+        appState.cart.push({
+
+            medicineId: medicine.id,
+
+            id: medicine.id,
+
+            name: medicine.name,
+
+            genericName:
+                medicine.genericName || "",
+
+            brandName:
+                medicine.brandName || "",
+
+            quantity: 1,
+
+            unitPrice: price,
+
+            price: price
         });
     }
 
-    // IMPORTANT
+    // Save cart
+    localStorage.setItem(
+        "medifind_cart",
+        JSON.stringify(appState.cart)
+    );
+
+    // Update UI
     updateCartBadge();
-    renderReservationCart();
+
+    if (typeof renderReservationCart === "function") {
+        renderReservationCart();
+    }
 
     showToast(
-        `${medicine.name} added to reservation.`,
+        medicine.name + " added to reservation.",
         "success"
     );
 
-    // Open actual cart drawer
-    toggleDrawer("cart-drawer");
+    console.log(
+        "Current reservation cart:",
+        appState.cart
+    );
 }
 
-
+// ============================================================
+// UPDATE CART BADGE
+// ============================================================
 
 function updateCartBadge() {
 
-    const badge =
-        document.getElementById("cart-badge-count");
+    const $badge = $("#cart-badge-count");
 
-    if (!badge) return;
+    if ($badge.length === 0) {
+        return;
+    }
 
     const totalItems =
         appState.cart.reduce(
-            (total, item) =>
-                total + Number(item.quantity || 0),
+            function (total, item) {
+
+                return total +
+                    Number(item.quantity || 0);
+
+            },
             0
         );
 
-    badge.textContent = totalItems;
+    $badge.text(totalItems);
 }
 
+// ============================================================
+// OPEN RESERVATION MODAL
+// ============================================================
 
-function openReservationModal() {
+async function openReservationModal() {
 
+    // Check whether cart has medicines
     if (
         !Array.isArray(appState.cart) ||
         appState.cart.length === 0
     ) {
+
         showToast(
             "Please select a medicine first.",
             "warning"
         );
+
         return;
     }
 
+    console.log("Opening reservation modal...");
 
     renderReservationCart();
+
     updateCartBadge();
-    loadReservationBranches();
+
+    await loadReservationBranches();
 
     openModal("reservation-modal");
 }
 
+// ============================================================
+// RENDER RESERVATION CART
+// ============================================================
+
 function renderReservationCart() {
 
-    const cartContainer = document.getElementById("cart-items-container");
-    const totalItemsElement = document.getElementById("cart-total-qty");
+    const $cartContainer =
+        $("#cart-items-container");
 
-    if (!cartContainer) {
+    const $totalItems =
+        $("#cart-total-qty");
+
+    if ($cartContainer.length === 0) {
+
         console.warn(
             "reservation-cart-items element not found."
         );
+
         return;
     }
 
-    cartContainer.innerHTML = "";
+    // Clear existing cart items
+    $cartContainer.empty();
+
+    // ========================================================
+    // EMPTY CART
+    // ========================================================
 
     if (
         !Array.isArray(appState.cart) ||
         appState.cart.length === 0
     ) {
 
-        cartContainer.innerHTML = `
+        $cartContainer.html(`
             <div style="
                 text-align:center;
                 padding:2rem;
@@ -1673,47 +2475,54 @@ function renderReservationCart() {
             ">
                 <p>No medicines added yet.</p>
             </div>
-        `;
+        `);
 
-        if (totalItemsElement) {
-            totalItemsElement.textContent = "0 Items";
+        if ($totalItems.length > 0) {
+            $totalItems.text("0 Items");
         }
 
         return;
     }
 
+    // ========================================================
+    // CALCULATE TOTAL QUANTITY
+    // ========================================================
+
     let totalQuantity = 0;
 
-    appState.cart.forEach((item, index) => {
+    // ========================================================
+    // RENDER CART ITEMS
+    // ========================================================
+
+    $.each(appState.cart, function (index, item) {
 
         const quantity =
             Number(item.quantity || 1);
 
         totalQuantity += quantity;
 
-        const itemElement =
-            document.createElement("div");
+        const $itemElement =
+            $("<div>", {
+                class: "reservation-cart-item"
+            });
 
-        itemElement.className =
-            "reservation-cart-item";
+        $itemElement.css({
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            padding: "12px",
+            marginBottom: "10px",
+            border: "1px solid var(--glass-border)",
+            borderRadius: "10px"
+        });
 
-        itemElement.style.cssText = `
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:12px;
-            padding:12px;
-            margin-bottom:10px;
-            border:1px solid var(--glass-border);
-            border-radius:10px;
-        `;
-
-        itemElement.innerHTML = `
+        $itemElement.html(`
 
             <div style="flex:1;">
 
                 <strong>
-                    ${escapeHtml(item.name)}
+                    ${escapeHtml(item.name || "")}
                 </strong>
 
                 <div style="
@@ -1733,43 +2542,92 @@ function renderReservationCart() {
             ">
 
                 <button
-                    class="btn btn-secondary"
-                    onclick="decreaseCartItem(${index})">
+                    type="button"
+                    class="btn btn-secondary decrease-cart-btn">
                     −
                 </button>
 
-                <span>
+                <span class="cart-item-quantity">
                     ${quantity}
                 </span>
 
                 <button
-                    class="btn btn-secondary"
-                    onclick="increaseCartItem(${index})">
+                    type="button"
+                    class="btn btn-secondary increase-cart-btn">
                     +
                 </button>
 
                 <button
-                    class="btn btn-danger"
-                    onclick="removeFromCart(${index})">
+                    type="button"
+                    class="btn btn-danger remove-cart-btn">
                     ×
                 </button>
 
             </div>
-        `;
+        `);
 
-        cartContainer.appendChild(itemElement);
+        // ====================================================
+        // DECREASE QUANTITY
+        // ====================================================
+
+        $itemElement
+            .find(".decrease-cart-btn")
+            .on("click", function () {
+
+                decreaseCartItem(index);
+
+            });
+
+        // ====================================================
+        // INCREASE QUANTITY
+        // ====================================================
+
+        $itemElement
+            .find(".increase-cart-btn")
+            .on("click", function () {
+
+                increaseCartItem(index);
+
+            });
+
+        // ====================================================
+        // REMOVE ITEM
+        // ====================================================
+
+        $itemElement
+            .find(".remove-cart-btn")
+            .on("click", function () {
+
+                removeFromCart(index);
+
+            });
+
+        // Add item to cart container
+        $cartContainer.append($itemElement);
+
     });
 
-    if (totalItemsElement) {
-        totalItemsElement.textContent =
-            `${totalQuantity} Items`;
+    // ========================================================
+    // UPDATE TOTAL QUANTITY
+    // ========================================================
+
+    if ($totalItems.length > 0) {
+
+        $totalItems.text(
+            `${totalQuantity} Items`
+        );
     }
 }
 
+// ============================================================
+// INCREASE CART ITEM
+// ============================================================
 
 function increaseCartItem(index) {
 
-    if (!appState.cart[index]) return;
+    if (!appState.cart[index]) {
+        return;
+    }
 
     appState.cart[index].quantity += 1;
 
@@ -1777,13 +2635,21 @@ function increaseCartItem(index) {
     renderReservationCart();
 }
 
+
+// ============================================================
+// DECREASE CART ITEM
+// ============================================================
+
 function decreaseCartItem(index) {
 
-    if (!appState.cart[index]) return;
+    if (!appState.cart[index]) {
+        return;
+    }
 
     appState.cart[index].quantity -= 1;
 
     if (appState.cart[index].quantity <= 0) {
+
         appState.cart.splice(index, 1);
     }
 
@@ -1791,9 +2657,16 @@ function decreaseCartItem(index) {
     renderReservationCart();
 }
 
+
+// ============================================================
+// REMOVE FROM CART
+// ============================================================
+
 function removeFromCart(index) {
 
-    if (!appState.cart[index]) return;
+    if (!appState.cart[index]) {
+        return;
+    }
 
     appState.cart.splice(index, 1);
 
@@ -1806,41 +2679,98 @@ function removeFromCart(index) {
     );
 }
 
+// ============================================================
+// TOGGLE DRAWER
+// ============================================================
+
 function toggleDrawer(id) {
 
-    // First try the exact ID
-    let drawer = document.getElementById(id);
+    console.log(
+        "toggleDrawer called with ID:",
+        id
+    );
 
-    // If not found, try ID + "-backdrop"
-    if (!drawer) {
-        drawer = document.getElementById(id + "-backdrop");
+    let $drawer = $("#" + id);
+
+    if ($drawer.length === 0) {
+
+        $drawer =
+            $("#" + id + "-backdrop");
     }
 
-    if (!drawer) {
-        console.error("Drawer not found:", id);
+    if ($drawer.length === 0) {
+
+        console.error(
+            "Drawer not found:",
+            id
+        );
+
         return;
     }
 
-    const currentDisplay =
-        window.getComputedStyle(drawer).display;
+    console.log(
+        "Drawer found:",
+        $drawer.attr("id")
+    );
 
-    drawer.style.display =
-        currentDisplay === "flex"
-            ? "none"
-            : "flex";
+    if ($drawer.is(":visible")) {
+
+        $drawer.hide();
+
+    } else {
+
+        $drawer.css("display", "flex");
+
+        // ====================================================
+        // LOAD PHARMACY BRANCHES WHEN RESERVATION CART OPENS
+        // ====================================================
+
+        if (
+            id === "cart-drawer-backdrop" ||
+            id === "reservation-cart"
+        ) {
+
+            console.log(
+                "Reservation drawer opened. Loading pharmacy branches..."
+            );
+
+            loadReservationBranches();
+        }
+    }
 }
+
+
+// ============================================================
+// CLOSE DRAWER
+// ============================================================
 
 function closeDrawer(id) {
 
-    const drawer = document.getElementById(id);
+    const $drawer = $("#" + id);
 
-    if (!drawer) {
-        console.error("Drawer not found:", id);
+    if ($drawer.length === 0) {
+
+        console.error(
+            "Drawer not found:",
+            id
+        );
+
         return;
     }
 
-    drawer.style.display = "none";
+    $drawer.hide();
 }
+
+
+// ============================================================
+// GLOBAL FUNCTIONS
+// ============================================================
+
+window.toggleDrawer = toggleDrawer;
+window.closeDrawer = closeDrawer;
+// ============================================================
+// SUBMIT RESERVATION
+// ============================================================
 
 async function submitReservation() {
 
@@ -1848,16 +2778,28 @@ async function submitReservation() {
     // Get reservation form elements safely
     // --------------------------------------------------------
 
-    const pickupDateInput = document.getElementById("reservation-pickup-date");
-    const notesInput = document.getElementById("checkout-notes");
-    const pickupInput = pickupDateInput || document.getElementById("checkout-pickup");
-    const notesField = notesInput || document.getElementById("special-instructions");
+    const $pickupDateInput =
+        $("#reservation-pickup-date");
+
+    const $notesInput =
+        $("#checkout-notes");
+
+    const $pickupInput =
+        $pickupDateInput.length > 0
+            ? $pickupDateInput
+            : $("#checkout-pickup");
+
+    const $notesField =
+        $notesInput.length > 0
+            ? $notesInput
+            : $("#special-instructions");
+
 
     // --------------------------------------------------------
     // Validate required pickup date field
     // --------------------------------------------------------
 
-    if (!pickupInput) {
+    if ($pickupInput.length === 0) {
 
         console.error(
             "Reservation error: Pickup date input element not found."
@@ -1877,13 +2819,15 @@ async function submitReservation() {
     // --------------------------------------------------------
 
     const pickupDate =
-        pickupInput.value
-            ? pickupInput.value.trim()
-            : "";
+        ($pickupInput.val() || "")
+            .toString()
+            .trim();
 
     const notes =
-        notesField && notesField.value
-            ? notesField.value.trim()
+        $notesField.length > 0
+            ? (($notesField.val() || "")
+                .toString()
+                .trim())
             : "";
 
 
@@ -1891,7 +2835,11 @@ async function submitReservation() {
     // Validate cart
     // --------------------------------------------------------
 
-    if (!appState.cart || appState.cart.length === 0) {
+    if (
+        !appState.cart ||
+        !Array.isArray(appState.cart) ||
+        appState.cart.length === 0
+    ) {
 
         showToast(
             "Your reservation cart is empty.",
@@ -1911,6 +2859,7 @@ async function submitReservation() {
         JSON.parse(
             localStorage.getItem("medifind_session") || "null"
         );
+
 
     if (!currentUser) {
 
@@ -1937,54 +2886,154 @@ async function submitReservation() {
         return;
     }
 
-// --------------------------------------------------------
-// Get selected pharmacy branch
-// --------------------------------------------------------
 
-    const branchSelect = document.getElementById("reservation-branch");
-    const branchId = branchSelect ? branchSelect.value : null;
+    // --------------------------------------------------------
+    // Get selected pharmacy branch
+    // --------------------------------------------------------
+
+    const $branchSelect =
+        $("#reservation-branch");
+
+    const branchId =
+        $branchSelect.length > 0
+            ? $branchSelect.val()
+            : null;
 
 
-// --------------------------------------------------------
-// Validate pharmacy branch
-// --------------------------------------------------------
+    // --------------------------------------------------------
+    // Validate pharmacy branch
+    // --------------------------------------------------------
 
     if (!branchId) {
-        console.error("Reservation error: Pharmacy branch not selected.");
-        showToast("Please select a pharmacy branch.", "danger");
+
+        console.error(
+            "Reservation error: Pharmacy branch not selected."
+        );
+
+        showToast(
+            "Please select a pharmacy branch.",
+            "danger"
+        );
 
         return;
     }
+
+
     // --------------------------------------------------------
     // Create reservation request
     // --------------------------------------------------------
 
     const reservationRequest = {
-        reservationDate: new Date().toISOString(),
-        pickupDate: new Date(pickupDate).toISOString(),
-        status: "PENDING",
-        notes: notes,
-        userId: currentUser.userId || currentUser.id,
-        pharmacyBranchId: Number(branchId)
+
+        reservationDate:
+            new Date().toISOString(),
+
+        pickupDate:
+            new Date(pickupDate).toISOString(),
+
+        status:
+            "PENDING",
+
+        notes:
+        notes,
+
+        userId:
+            currentUser.userId ||
+            currentUser.id,
+
+        pharmacyBranchId:
+            Number(branchId)
     };
-    console.log("Reservation Request:", reservationRequest);
+
+
+    console.log(
+        "Reservation Request:",
+        reservationRequest
+    );
+
+
+    // --------------------------------------------------------
+    // Get JWT token
+    // --------------------------------------------------------
+
+    const token =
+        localStorage.getItem("medifind_token");
+
 
     // --------------------------------------------------------
     // Create Reservation
     // --------------------------------------------------------
 
-    const reservationResponse =
-        await apiFetch(
-            "/v1/reservations",
-            "POST",
-            reservationRequest
+    let reservationResponse;
+
+    try {
+
+        reservationResponse =
+            await $.ajax({
+
+                url:
+                    API_BASE_URL +
+                    "/v1/reservations",
+
+                type:
+                    "POST",
+
+                contentType:
+                    "application/json",
+
+                dataType:
+                    "json",
+
+                headers:
+                    token
+                        ? {
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                        : {},
+
+                data:
+                    JSON.stringify(
+                        reservationRequest
+                    )
+            });
+
+    } catch (error) {
+
+        console.error(
+            "Reservation API Error:",
+            error
         );
 
+        let errorMessage =
+            "Failed to create reservation.";
+
+        if (
+            error.responseJSON &&
+            error.responseJSON.message
+        ) {
+
+            errorMessage =
+                error.responseJSON.message;
+        }
+
+        showToast(
+            errorMessage,
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Check reservation response
+    // CommonResponse success = status === 0
+    // --------------------------------------------------------
 
     if (
         !reservationResponse ||
-        !reservationResponse.success ||
-        reservationResponse.httpStatus !== 200
+        reservationResponse.status !== 0
     ) {
 
         console.error(
@@ -1993,8 +3042,11 @@ async function submitReservation() {
         );
 
         showToast(
-            reservationResponse?.message ||
-            "Failed to create reservation.",
+            reservationResponse &&
+            reservationResponse.message
+                ? reservationResponse.message
+                : "Failed to create reservation.",
+
             "danger"
         );
 
@@ -2010,7 +3062,10 @@ async function submitReservation() {
         reservationResponse.body;
 
 
-    if (!reservation || !reservation.id) {
+    if (
+        !reservation ||
+        !reservation.id
+    ) {
 
         console.error(
             "Invalid reservation response:",
@@ -2026,16 +3081,26 @@ async function submitReservation() {
     }
 
 
+    console.log(
+        "Reservation Created:",
+        reservation
+    );
+
+
     // --------------------------------------------------------
     // Create Reservation Items
     // --------------------------------------------------------
 
-    for (const cartItem of appState.cart) {
+    for (
+        const cartItem of appState.cart
+        ) {
 
         const itemRequest = {
 
             quantity:
-                Number(cartItem.quantity || 1),
+                Number(
+                    cartItem.quantity || 1
+                ),
 
             unitPrice:
                 Number(
@@ -2061,22 +3126,50 @@ async function submitReservation() {
         );
 
 
-        const itemResponse =
-            await apiFetch(
-                "/v1/reservation-items",
-                "POST",
-                itemRequest
-            );
+        let itemResponse;
 
-        if (
-            !itemResponse ||
-            !itemResponse.success ||
-            itemResponse.httpStatus !== 200
-        ) {
+
+        // ----------------------------------------------------
+        // Create Reservation Item
+        // ----------------------------------------------------
+
+        try {
+
+            itemResponse =
+                await $.ajax({
+
+                    url:
+                        API_BASE_URL +
+                        "/v1/reservation-items",
+
+                    type:
+                        "POST",
+
+                    contentType:
+                        "application/json",
+
+                    dataType:
+                        "json",
+
+                    headers:
+                        token
+                            ? {
+                                "Authorization":
+                                    "Bearer " + token
+                            }
+                            : {},
+
+                    data:
+                        JSON.stringify(
+                            itemRequest
+                        )
+                });
+
+        } catch (error) {
 
             console.error(
                 "Reservation Item API Error:",
-                itemResponse
+                error
             );
 
             showToast(
@@ -2086,7 +3179,41 @@ async function submitReservation() {
 
             return;
         }
+
+
+        // ----------------------------------------------------
+        // Check Reservation Item Response
+        // ----------------------------------------------------
+
+        if (
+            !itemResponse ||
+            itemResponse.status !== 0
+        ) {
+
+            console.error(
+                "Reservation Item API Error:",
+                itemResponse
+            );
+
+            showToast(
+                itemResponse &&
+                itemResponse.message
+                    ? itemResponse.message
+                    : "Reservation created, but a reservation item could not be saved.",
+                "danger"
+            );
+
+            return;
+        }
     }
+// --------------------------------------------------------
+    // Reservation + all items successfully created
+    // --------------------------------------------------------
+
+    console.log(
+        "Reservation completed successfully:",
+        reservation
+    );
 
 
     // --------------------------------------------------------
@@ -2106,31 +3233,52 @@ async function submitReservation() {
     // --------------------------------------------------------
 
     if (typeof updateCartUI === "function") {
+
         updateCartUI();
     }
 
     if (typeof renderCart === "function") {
+
         renderCart();
+    }
+
+    if (typeof updateCartBadge === "function") {
+
+        updateCartBadge();
+    }
+
+    if (typeof renderReservationCart === "function") {
+
+        renderReservationCart();
     }
 
 
     // --------------------------------------------------------
-    // Close reservation drawer/modal
+    // Close reservation modal
     // --------------------------------------------------------
 
     if (typeof closeModal === "function") {
 
-        closeModal("reservation-modal");
-    }
-
-    if (typeof toggleDrawer === "function") {
-
-        toggleDrawer("reservation-cart");
+        closeModal(
+            "reservation-modal"
+        );
     }
 
 
     // --------------------------------------------------------
-    // Show success
+    // Close reservation drawer
+    // --------------------------------------------------------
+
+    if (typeof toggleDrawer === "function") {
+
+        toggleDrawer(
+            "reservation-cart"
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // Show success message
     // --------------------------------------------------------
 
     showToast(
@@ -2143,52 +3291,190 @@ async function submitReservation() {
     // Receipt
     // --------------------------------------------------------
 
-    const receiptRef =
-        document.getElementById("receipt-ref");
+    const $receiptRef =
+        $("#receipt-ref");
 
-    if (receiptRef) {
-        receiptRef.textContent =
-            "RES-" + reservation.id;
+    if ($receiptRef.length > 0) {
+
+        $receiptRef.text(
+            "RES-" + reservation.id
+        );
     }
 
-    const receiptPickup =
-        document.getElementById("receipt-pickup");
 
-    if (receiptPickup) {
-        receiptPickup.textContent =
-            new Date(pickupDate).toLocaleString();
+    const $receiptPickup =
+        $("#receipt-pickup");
+
+    if ($receiptPickup.length > 0) {
+
+        $receiptPickup.text(
+            new Date(
+                pickupDate
+            ).toLocaleString()
+        );
     }
 
-    const receiptModal =
-        document.getElementById("reservation-receipt-modal");
 
-    if (receiptModal) {
-        receiptModal.style.display = "flex";
+    const $receiptModal =
+        $("#reservation-receipt-modal");
+
+    if ($receiptModal.length > 0) {
+
+        $receiptModal.css(
+            "display",
+            "flex"
+        );
     }
+
 }
+// ============================================================
+// LOAD CUSTOMER RESERVATIONS
+// ============================================================
+
 async function loadCustomerReservations() {
 
-    if (!appState.currentUser) return;
+    // --------------------------------------------------------
+    // Check logged-in user
+    // --------------------------------------------------------
 
-    const response =
-        await apiFetch("/reservations", "GET");
+    if (!appState.currentUser) {
+        return;
+    }
 
-    if (!response.success) return;
+
+    // --------------------------------------------------------
+    // Get JWT token
+    // --------------------------------------------------------
+
+    const token =
+        localStorage.getItem(
+            "medifind_token"
+        );
+
+
+    // --------------------------------------------------------
+    // Load reservations
+    // --------------------------------------------------------
+
+    let response;
+
+    try {
+
+        response =
+            await $.ajax({
+
+                url:
+                    API_BASE_URL +
+                    "/reservations",
+
+                type:
+                    "GET",
+
+                dataType:
+                    "json",
+
+                headers:
+                    token
+                        ? {
+                            "Authorization":
+                                "Bearer " + token
+                        }
+                        : {}
+            });
+
+    } catch (error) {
+
+        console.error(
+            "Customer Reservations API Error:",
+            error
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Validate response
+    // --------------------------------------------------------
+
+    if (
+        !response ||
+        response.status !== 0
+    ) {
+
+        console.error(
+            "Failed to load customer reservations:",
+            response
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // Filter current user's reservations
+    // --------------------------------------------------------
 
     const reservations =
         Array.isArray(response.body)
+
             ? response.body.filter(
-                r =>
-                    Number(r.userId) ===
-                    Number(appState.currentUser.id)
+                function (reservation) {
+
+                    return (
+                        Number(
+                            reservation.userId
+                        ) ===
+                        Number(
+                            appState.currentUser.userId ||
+                            appState.currentUser.id
+                        )
+                    );
+                }
             )
+
             : [];
 
-    console.log("My reservations:", reservations);
+
+    // --------------------------------------------------------
+    // Log reservations
+    // --------------------------------------------------------
+
+    console.log(
+        "My reservations:",
+        reservations
+    );
+
+
+    // --------------------------------------------------------
+    // Save to appState if required
+    // --------------------------------------------------------
+
+    appState.customerReservations =
+        reservations;
 }
 
-document.addEventListener("DOMContentLoaded", function () {
 
-    loadReservationBranches();
+window.addToCart = addToCart;
 
-});
+window.openModal = openModal;
+window.closeModal = closeModal;
+
+window.showSection = showSection;
+
+window.handleLogin = handleLogin;
+window.handlePageLogin = handlePageLogin;
+window.handleSignup = handleSignup;
+window.handleLogout = handleLogout;
+
+window.selectCategory = selectCategory;
+
+window.openReservationModal = openReservationModal;
+window.submitReservation = submitReservation;
+
+window.increaseCartItem = increaseCartItem;
+window.decreaseCartItem = decreaseCartItem;
+window.removeFromCart = removeFromCart;
+
+window.loadReservationBranches = loadReservationBranches;
+window.loadCustomerReservations = loadCustomerReservations;

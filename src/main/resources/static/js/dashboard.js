@@ -4034,305 +4034,598 @@ async function deleteReservation(id) {
     }
 }
 
-// ============================================================
-// INVENTORY - GET ALL
-// ============================================================
-
-async function loadDashboardInventory() {
-
-    try {
-
-        const response =
-            await apiFetch("/v1/inventories", "GET");
-
-        console.log(
-            "Dashboard Inventory API Response:",
-            response
-        );
-
-        if (!response || !response.success) {
-
-            showToast(
-                response?.message ||
-                "Cannot load inventory.",
-                "danger"
-            );
-
-            return [];
-        }
-
-        let inventory = response.body;
-
-        if (!Array.isArray(inventory)) {
-
-            if (
-                inventory &&
-                Array.isArray(inventory.content)
-            ) {
-                inventory = inventory.content;
-            } else {
-                inventory = [];
-            }
-        }
-
-        return inventory;
-
-    } catch (error) {
-
-        console.error(
-            "Error loading inventory:",
-            error
-        );
-
-        showToast(
-            "Error loading inventory.",
-            "danger"
-        );
-
-        return [];
-    }
-}
-
-async function loadInventoryRelatedData() {
-
-    const [branchesResponse, batchesResponse] =
-        await Promise.all([
-            apiFetch("/v1/pharmacy-branches", "GET"),
-            apiFetch("/v1/medicine-batches", "GET")
-        ]);
-
-    let branches =
-        branchesResponse?.body || [];
-
-    let batches =
-        batchesResponse?.body || [];
-
-    if (!Array.isArray(branches)) {
-        branches = branches.content || [];
-    }
-
-    if (!Array.isArray(batches)) {
-        batches = batches.content || [];
-    }
-
-    return {
-        branches,
-        batches
-    };
-}
-
-async function renderInventoryTable() {
-
-    const head =
-        document.getElementById(
-            "workspace-table-head"
-        );
-
-    const body =
-        document.getElementById(
-            "workspace-table-body"
-        );
-
-    const panelTitle =
-        document.getElementById(
-            "table-panel-title"
-        );
-
-    panelTitle.textContent =
-        "Branch Stock Allocation Sheets";
-
-    head.innerHTML = `
-        <tr>
-            <th>ID</th>
-            <th>Branch</th>
-            <th>Medicine / Batch</th>
-            <th>Available Qty</th>
-            <th>Reorder Level</th>
-            <th>Last Updated</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    `;
-
-    body.innerHTML = `
-        <tr>
-            <td colspan="8"
-                style="text-align:center; padding:2rem;">
-                Loading inventory...
-            </td>
-        </tr>
-    `;
-
-    const inventory =
-        await loadDashboardInventory();
-
-    const related =
-        await loadInventoryRelatedData();
-
-    const branches =
-        related.branches;
-
-    const batches =
-        related.batches;
-
-    if (inventory.length === 0) {
-
-        body.innerHTML = `
-            <tr>
-                <td colspan="8"
-                    style="text-align:center;
-                           color:var(--text-muted);">
-                    No inventory records found.
-                </td>
-            </tr>
-        `;
-
-        return;
-    }
-
-    body.innerHTML = "";
-
-    inventory.forEach(inv => {
-
-        const branch =
-            branches.find(
-                b => b.id == inv.pharmacyBranchId
-            );
-
-        const batch =
-            batches.find(
-                b => b.id == inv.medicineBatchId
-            );
-
-        const branchName =
-            branch?.name ||
-            "Unknown Branch";
-
-        const batchName =
-            batch?.batchNumber ||
-            "Unknown Batch";
-
-        const isLow =
-            inv.quantity <= inv.reorderLevel;
-
-        const statusBadge =
-            isLow
-                ? `<span class="badge badge-danger">
-                       LOW STOCK
-                   </span>`
-                : `<span class="badge badge-success">
-                       OK STOCK
-                   </span>`;
-
-        const tr =
-            document.createElement("tr");
-
-        tr.innerHTML = `
-            <td>${inv.id}</td>
-
-            <td>
-                <strong>${branchName}</strong>
-            </td>
-
-            <td>
-                <strong>
-                    ${batchName}
-                </strong>
-            </td>
-
-            <td>
-                ${inv.quantity} Units
-            </td>
-
-            <td>
-                ${inv.reorderLevel} Units
-            </td>
-
-            <td>
-                <small>
-                    ${inv.lastUpdated
-            ? new Date(
-                inv.lastUpdated
-            ).toLocaleString()
-            : "N/A"}
-                </small>
-            </td>
-
-            <td>
-                ${statusBadge}
-            </td>
-
-            <td>
-
-                <button
-                    class="btn btn-secondary"
-                    style="padding:0.25rem 0.5rem;
-                           font-size:0.75rem;"
-                    onclick="editInventory(${inv.id})">
-                    Edit
-                </button>
-
-                <button
-                    class="btn btn-danger"
-                    style="padding:0.25rem 0.5rem;
-                           font-size:0.75rem;"
-                    onclick="deleteInventory(${inv.id})">
-                    Delete
-                </button>
-
-            </td>
-        `;
-
-        body.appendChild(tr);
-    });
-}
-
-const requestBody = {
-
-    pharmacyBranchId:
-        Number(
-            document.getElementById(
-                "inventory-branch"
-            ).value
-        ),
-
-    medicineBatchId:
-        Number(
-            document.getElementById(
-                "inventory-batch"
-            ).value
-        ),
-
-    quantity:
-        Number(
-            document.getElementById(
-                "inventory-qty"
-            ).value
-        ),
-
-    reorderLevel:
-        Number(
-            document.getElementById(
-                "inventory-reorder"
-            ).value
-        )
-};
-
-const response =
-    await apiFetch(
-        "/v1/inventories",
-        "POST",
-        requestBody
-    );
-
-
-
-
-
-
-
-
-
+// // ============================================================
+// // INVENTORY - GET ALL
+// // ============================================================
+//
+// async function loadDashboardInventory() {
+//
+//     try {
+//
+//         const response =
+//             await apiFetch("/v1/inventories", "GET");
+//
+//         console.log(
+//             "Dashboard Inventory API Response:",
+//             response
+//         );
+//
+//         if (!response || !response.success) {
+//
+//             showToast(
+//                 response?.message ||
+//                 "Cannot load inventory.",
+//                 "danger"
+//             );
+//
+//             return [];
+//         }
+//
+//         let inventory = response.body;
+//
+//         if (!Array.isArray(inventory)) {
+//
+//             if (
+//                 inventory &&
+//                 Array.isArray(inventory.content)
+//             ) {
+//                 inventory = inventory.content;
+//             } else {
+//                 inventory = [];
+//             }
+//         }
+//
+//         return inventory;
+//
+//     } catch (error) {
+//
+//         console.error(
+//             "Error loading inventory:",
+//             error
+//         );
+//
+//         showToast(
+//             "Error loading inventory.",
+//             "danger"
+//         );
+//
+//         return [];
+//     }
+// }
+//
+// async function loadInventoryRelatedData() {
+//
+//     const [branchesResponse, batchesResponse] =
+//         await Promise.all([
+//             apiFetch("/v1/pharmacy-branches", "GET"),
+//             apiFetch("/v1/medicine-batches", "GET")
+//         ]);
+//
+//     let branches =
+//         branchesResponse?.body || [];
+//
+//     let batches =
+//         batchesResponse?.body || [];
+//
+//     if (!Array.isArray(branches)) {
+//         branches = branches.content || [];
+//     }
+//
+//     if (!Array.isArray(batches)) {
+//         batches = batches.content || [];
+//     }
+//
+//     return {
+//         branches,
+//         batches
+//     };
+// }
+//
+// async function renderInventoryTable() {
+//
+//     const head =
+//         document.getElementById(
+//             "workspace-table-head"
+//         );
+//
+//     const body =
+//         document.getElementById(
+//             "workspace-table-body"
+//         );
+//
+//     const panelTitle =
+//         document.getElementById(
+//             "table-panel-title"
+//         );
+//
+//     panelTitle.textContent =
+//         "Branch Stock Allocation Sheets";
+//
+//     head.innerHTML = `
+//         <tr>
+//             <th>ID</th>
+//             <th>Branch</th>
+//             <th>Medicine / Batch</th>
+//             <th>Available Qty</th>
+//             <th>Reorder Level</th>
+//             <th>Last Updated</th>
+//             <th>Status</th>
+//             <th>Actions</th>
+//         </tr>
+//     `;
+//
+//     body.innerHTML = `
+//         <tr>
+//             <td colspan="8"
+//                 style="text-align:center; padding:2rem;">
+//                 Loading inventory...
+//             </td>
+//         </tr>
+//     `;
+//
+//     const inventory =
+//         await loadDashboardInventory();
+//
+//     const related =
+//         await loadInventoryRelatedData();
+//
+//     const branches =
+//         related.branches;
+//
+//     const batches =
+//         related.batches;
+//
+//     if (inventory.length === 0) {
+//
+//         body.innerHTML = `
+//             <tr>
+//                 <td colspan="8"
+//                     style="text-align:center;
+//                            color:var(--text-muted);">
+//                     No inventory records found.
+//                 </td>
+//             </tr>
+//         `;
+//
+//         return;
+//     }
+//
+//     body.innerHTML = "";
+//
+//     inventory.forEach(inv => {
+//
+//         const branch =
+//             branches.find(
+//                 b => b.id == inv.pharmacyBranchId
+//             );
+//
+//         const batch =
+//             batches.find(
+//                 b => b.id == inv.medicineBatchId
+//             );
+//
+//         const branchName =
+//             branch?.name ||
+//             "Unknown Branch";
+//
+//         const batchName =
+//             batch?.batchNumber ||
+//             "Unknown Batch";
+//
+//         const isLow =
+//             inv.quantity <= inv.reorderLevel;
+//
+//         const statusBadge =
+//             isLow
+//                 ? `<span class="badge badge-danger">
+//                        LOW STOCK
+//                    </span>`
+//                 : `<span class="badge badge-success">
+//                        OK STOCK
+//                    </span>`;
+//
+//         const tr =
+//             document.createElement("tr");
+//
+//         tr.innerHTML = `
+//             <td>${inv.id}</td>
+//
+//             <td>
+//                 <strong>${branchName}</strong>
+//             </td>
+//
+//             <td>
+//                 <strong>
+//                     ${batchName}
+//                 </strong>
+//             </td>
+//
+//             <td>
+//                 ${inv.quantity} Units
+//             </td>
+//
+//             <td>
+//                 ${inv.reorderLevel} Units
+//             </td>
+//
+//             <td>
+//                 <small>
+//                     ${inv.lastUpdated
+//             ? new Date(
+//                 inv.lastUpdated
+//             ).toLocaleString()
+//             : "N/A"}
+//                 </small>
+//             </td>
+//
+//             <td>
+//                 ${statusBadge}
+//             </td>
+//
+//             <td>
+//
+//                 <button
+//                     class="btn btn-secondary"
+//                     style="padding:0.25rem 0.5rem;
+//                            font-size:0.75rem;"
+//                     onclick="editInventory(${inv.id})">
+//                     Edit
+//                 </button>
+//
+//                 <button
+//                     class="btn btn-danger"
+//                     style="padding:0.25rem 0.5rem;
+//                            font-size:0.75rem;"
+//                     onclick="deleteInventory(${inv.id})">
+//                     Delete
+//                 </button>
+//
+//             </td>
+//         `;
+//
+//         body.appendChild(tr);
+//     });
+// }
+//
+// const requestBody = {
+//
+//     pharmacyBranchId:
+//         Number(
+//             document.getElementById(
+//                 "inventory-branch"
+//             ).value
+//         ),
+//
+//     medicineBatchId:
+//         Number(
+//             document.getElementById(
+//                 "inventory-batch"
+//             ).value
+//         ),
+//
+//     quantity:
+//         Number(
+//             document.getElementById(
+//                 "inventory-qty"
+//             ).value
+//         ),
+//
+//     reorderLevel:
+//         Number(
+//             document.getElementById(
+//                 "inventory-reorder"
+//             ).value
+//         )
+// };
+//
+// const response =
+//     await apiFetch(
+//         "/v1/inventories",
+//         "POST",
+//         requestBody
+//     );
+//
+//
+// async function saveInventory() {
+//
+//     const id =
+//         document.getElementById(
+//             "inventory-edit-id"
+//         ).value;
+//
+//     const qty =
+//         parseInt(
+//             document.getElementById(
+//                 "inventory-qty"
+//             ).value
+//         );
+//
+//     const reorder =
+//         parseInt(
+//             document.getElementById(
+//                 "inventory-reorder"
+//             ).value
+//         );
+//
+//     if (
+//         isNaN(qty) ||
+//         isNaN(reorder)
+//     ) {
+//
+//         showToast(
+//             "Stock quantity and reorder level must be valid numbers.",
+//             "danger"
+//         );
+//
+//         return;
+//     }
+//
+//     const current =
+//         await apiFetch(
+//             `/v1/inventories/${id}`,
+//             "GET"
+//         );
+//
+//     if (!current || !current.success) {
+//
+//         showToast(
+//             current?.message ||
+//             "Cannot load inventory record.",
+//             "danger"
+//         );
+//
+//         return;
+//     }
+//
+//     const oldInventory =
+//         current.body;
+//
+//     const requestBody = {
+//
+//         pharmacyBranchId:
+//         oldInventory.pharmacyBranchId,
+//
+//         medicineBatchId:
+//         oldInventory.medicineBatchId,
+//
+//         quantity: qty,
+//
+//         reorderLevel: reorder
+//     };
+//
+//     const response =
+//         await apiFetch(
+//             `/v1/inventories/${id}`,
+//             "PUT",
+//             requestBody
+//         );
+//
+//     if (!response || !response.success) {
+//
+//         showToast(
+//             response?.message ||
+//             "Inventory update failed.",
+//             "danger"
+//         );
+//
+//         return;
+//     }
+//
+//     closeModal("inventory-modal");
+//
+//     await loadWorkspaceTab(
+//         "inventory"
+//     );
+//
+//     showToast(
+//         "Inventory updated successfully.",
+//         "success"
+//     );
+// }
+//
+//
+// async function editInventory(id) {
+//
+//     const response =
+//         await apiFetch(
+//             `/v1/inventories/${id}`,
+//             "GET"
+//         );
+//
+//     if (!response || !response.success) {
+//
+//         showToast(
+//             response?.message ||
+//             "Cannot load inventory.",
+//             "danger"
+//         );
+//
+//         return;
+//     }
+//
+//     const inv =
+//         response.body;
+//
+//     document.getElementById(
+//         "inventory-edit-id"
+//     ).value = inv.id;
+//
+//     document.getElementById(
+//         "inventory-qty"
+//     ).value = inv.quantity;
+//
+//     document.getElementById(
+//         "inventory-reorder"
+//     ).value = inv.reorderLevel;
+//
+//     const related =
+//         await loadInventoryRelatedData();
+//
+//     const batch =
+//         related.batches.find(
+//             b =>
+//                 b.id ===
+//                 inv.medicineBatchId
+//         );
+//
+//     const branch =
+//         related.branches.find(
+//             b =>
+//                 b.id ===
+//                 inv.pharmacyBranchId
+//         );
+//
+//     document.getElementById(
+//         "inventory-med-name"
+//     ).value =
+//         `${batch?.batchNumber || "Unknown Batch"}
+//          | ${branch?.name || "Unknown Branch"}`;
+//
+//     openModal(
+//         "inventory-modal"
+//     );
+// }
+//
+//
+// async function deleteInventory(id) {
+//
+//     if (
+//         !confirm(
+//             "Are you sure you want to delete this inventory record?"
+//         )
+//     ) {
+//         return;
+//     }
+//
+//     const response =
+//         await apiFetch(
+//             `/v1/inventories/${id}`,
+//             "DELETE"
+//         );
+//
+//     if (!response || !response.success) {
+//
+//         showToast(
+//             response?.message ||
+//             "Inventory deletion failed.",
+//             "danger"
+//         );
+//
+//         return;
+//     }
+//
+//     await loadWorkspaceTab(
+//         "inventory"
+//     );
+//
+//     showToast(
+//         "Inventory deleted successfully.",
+//         "info"
+//     );
+// }
+//
+//
+// async function renderInventoryStats() {
+//
+//     const statsContainer =
+//         document.getElementById(
+//             "workspace-stats"
+//         );
+//
+//     statsContainer.innerHTML = "";
+//
+//     const inventory =
+//         await loadDashboardInventory();
+//
+//     const totalRecords =
+//         inventory.length;
+//
+//     const totalUnits =
+//         inventory.reduce(
+//             (total, item) =>
+//                 total +
+//                 Number(item.quantity || 0),
+//             0
+//         );
+//
+//     const lowStock =
+//         inventory.filter(
+//             item =>
+//                 Number(item.quantity || 0)
+//                 <=
+//                 Number(item.reorderLevel || 0)
+//         ).length;
+//
+//     const stats = [
+//
+//         {
+//             title:
+//                 "Inventory Records",
+//             value:
+//             totalRecords,
+//             desc:
+//                 "Active stock records"
+//         },
+//
+//         {
+//             title:
+//                 "Available Units",
+//             value:
+//             totalUnits,
+//             desc:
+//                 "Total physical stock"
+//         },
+//
+//         {
+//             title:
+//                 "Low Stock Items",
+//             value:
+//             lowStock,
+//             desc:
+//                 "Needs immediate reorder"
+//         }
+//
+//     ];
+//
+//     stats.forEach(stat => {
+//
+//         const div =
+//             document.createElement(
+//                 "div"
+//             );
+//
+//         div.className =
+//             "glass-card stat-card animate-fade";
+//
+//         div.innerHTML = `
+//             <div class="stat-header">
+//                 <span class="stat-title">
+//                     ${stat.title}
+//                 </span>
+//             </div>
+//
+//             <div class="stat-val">
+//                 ${stat.value}
+//             </div>
+//
+//             <span class="stat-desc">
+//                 ${stat.desc}
+//             </span>
+//         `;
+//
+//         statsContainer.appendChild(
+//             div
+//         );
+//     });
+// }
+//
+//
+//
+//
+//
+//
+//
+//
 
 
 
@@ -4443,22 +4736,19 @@ async function loadWorkspaceTab(tabId) {
         return;
     }
 
-    if (tabId === "inventory") {
-        wTitle.textContent = "Inventory Stock & Alerts";
-        wDesc.textContent = "Manage stock quantities, warning levels, and identify low stock levels.";
-        wActions.innerHTML = `<button class="btn btn-primary" onclick="openInventoryModal()">
-            Update Stock
-        </button>
-    `;
-
-        // Inventory data will be loaded from backend here
-        const inventory = await loadDashboardInventory();
-
-        renderInventoryTable(inventory);
-        renderInventoryStats(inventory);
-
-        return;
-    }
+    // if (tabId === "inventory") {
+    //     wTitle.textContent = "Inventory Stock & Alerts";
+    //     wDesc.textContent = "Manage stock quantities, warning levels, and identify low stock levels.";
+    //     wActions.innerHTML = `
+    //     <button  class="btn btn-primary" onclick=" openInventoryModal() ">
+    //         Update Stock
+    //     </button>
+    // `;
+    //     await renderInventoryStats();
+    //     await renderInventoryTable();
+    //
+    //     return;
+    // }
 
     console.log("Workspace tab selected:", tabId);
 }
@@ -4473,7 +4763,7 @@ function getTabFriendlyName(tabId) {
         medicines: "Medicines",
         pharmacies: "Pharmacies",
         branches: "Branches",
-        inventory: "Inventory",
+        //inventory: "Inventory",
         reservations: "Reservations",
 
     };
@@ -4563,12 +4853,12 @@ function switchRole(role) {
                 </svg>
                 Branches
             </li>
-             <li class="sidebar-item" onclick="selectSidebarTab(this, 'inventory')">
-               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round"   stroke-linejoin="round" d="M3 7h18M3 7l2 14h14l2-14M8 7V5a4 4 0 018 0v2" />
-               </svg>
-                Inventory
-              </li>
+<!--             <li class="sidebar-item" onclick="selectSidebarTab(this, 'inventory')">-->
+<!--               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">-->
+<!--                    <path stroke-linecap="round"   stroke-linejoin="round" d="M3 7h18M3 7l2 14h14l2-14M8 7V5a4 4 0 018 0v2" />-->
+<!--               </svg>-->
+<!--                Inventory-->
+<!--              </li>-->
         `;
 
         loadWorkspaceTab("branches");
