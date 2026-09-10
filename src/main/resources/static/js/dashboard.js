@@ -4,6 +4,9 @@
 
 const API_BASE_URL = "http://localhost:8080";
 
+let sessionUser = null;
+let dashboardRole = null;
+
 // ============================================================
 // HTML ESCAPING UTILITY
 // ============================================================
@@ -235,6 +238,196 @@ function apiFetch(endpoint, method = "GET", body = null) {
             });
     });
 }
+// ============================================================
+// DASHBOARD LOGIN
+// ============================================================
+
+async function handleDashboardLogin() {
+
+    const $emailInput =
+        $("#dashboard-login-email");
+
+    const $passwordInput =
+        $("#dashboard-login-password");
+
+    if (!$emailInput.length || !$passwordInput.length) {
+
+        console.error("Dashboard login fields not found.");
+
+        return;
+    }
+
+    const email =
+        $.trim($emailInput.val());
+
+    const password =
+        $.trim($passwordInput.val());
+
+    if (!email || !password) {
+
+        showToast(
+            "Please enter email and password.",
+            "danger"
+        );
+
+        return;
+    }
+
+    showToast(
+        "Signing in...",
+        "info"
+    );
+
+    try {
+
+        const response = await $.ajax({
+
+            url: "http://localhost:8080/v1/auth/login",
+
+            type: "POST",
+
+            contentType: "application/json",
+
+            data: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
+
+        // ----------------------------------------------------
+        // LOGIN SUCCESS
+        // ----------------------------------------------------
+
+        const loginData = response.body;
+
+        if (!loginData || !loginData.token) {
+
+            showToast(
+                "Login successful but JWT token was not received.",
+                "danger"
+            );
+
+            return;
+        }
+
+        // ----------------------------------------------------
+        // SAVE JWT TOKEN
+        // ----------------------------------------------------
+
+        localStorage.setItem(
+            "medifind_token",
+            loginData.token
+        );
+
+        // ----------------------------------------------------
+        // GET USER ROLE
+        // ----------------------------------------------------
+
+        const role =
+            (loginData.role || "").toUpperCase();
+
+        // ----------------------------------------------------
+        // CHECK DASHBOARD ACCESS
+        // ----------------------------------------------------
+
+        if (
+            role !== "ADMIN" &&
+            role !== "PHARMACY_ADMIN" &&
+            role !== "PHARMACY_STAFF"
+        ) {
+
+            localStorage.removeItem(
+                "medifind_token"
+            );
+
+            showToast(
+                "Access denied. You are not authorized to access the dashboard.",
+                "danger"
+            );
+
+            return;
+        }
+
+        // ----------------------------------------------------
+        // CREATE SESSION USER
+        // ----------------------------------------------------
+
+        const user = {
+
+            id: loginData.userId,
+
+            name: loginData.name,
+
+            email: loginData.email,
+
+            role: role
+        };
+
+        localStorage.setItem(
+            "medifind_session",
+            JSON.stringify(user)
+        );
+
+        // ----------------------------------------------------
+        // UPDATE DASHBOARD SESSION
+        // ----------------------------------------------------
+
+        sessionUser = user;
+
+        dashboardRole = role;
+
+        // ----------------------------------------------------
+        // HIDE LOGIN SCREEN
+        // ----------------------------------------------------
+
+        $("#dashboard-login-screen").hide();
+
+        // ----------------------------------------------------
+        // SHOW DASHBOARD
+        // ----------------------------------------------------
+
+        $("#dashboard-app").show();
+
+        // ----------------------------------------------------
+        // LOAD DASHBOARD ACCORDING TO ROLE
+        // ----------------------------------------------------
+
+        switchRole(role);
+
+        // ----------------------------------------------------
+        // SUCCESS MESSAGE
+        // ----------------------------------------------------
+
+        showToast(
+            `Welcome back, ${loginData.name || loginData.email}!`,
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard login failed:",
+            error
+        );
+
+        let message =
+            "Invalid email or password.";
+
+        if (
+            error.responseJSON &&
+            error.responseJSON.message
+        ) {
+            message =
+                error.responseJSON.message;
+        }
+
+        showToast(
+            message,
+            "danger"
+        );
+    }
+}
+
 // ============================================================
 // MEDICINE CATEGORY - GET ALL
 // ============================================================
@@ -9273,16 +9466,21 @@ function switchRole(role) {
     }
 }
 
+
 // ============================================================
 // INITIALIZATION ON PAGE LOAD
 // ============================================================
 
-document.addEventListener("DOMContentLoaded", function () {
-    console.log("MediFind Management Console initialized.");
-    // Default to ADMIN view which loads medicine categories
-    switchRole("ADMIN");
-});
+// document.addEventListener("DOMContentLoaded", function () {
+//     console.log("MediFind Management Console initialized.");
+//     // Default to ADMIN view which loads medicine categories
+//     switchRole("ADMIN");
+// });
 
+
+
+// Authentication
+window.handleDashboardLogin = handleDashboardLogin;
 
 // Modal controls
 window.openModal = openModal;
