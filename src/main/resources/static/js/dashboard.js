@@ -5153,10 +5153,6 @@ async function deleteReservation(id) {
     }
 }
 // ============================================================
-// LOAD WORKSPACE TAB
-// ============================================================
-
-// ============================================================
 // INVENTORY - GET ALL FROM BACKEND
 // ============================================================
 
@@ -5236,6 +5232,7 @@ async function loadDashboardInventory() {
     }
 }
 
+
 // ============================================================
 // INVENTORY - RENDER TABLE
 // ============================================================
@@ -5262,7 +5259,6 @@ function renderInventoryTable(inventory) {
         );
 
         return;
-
     }
 
 
@@ -5281,7 +5277,7 @@ function renderInventoryTable(inventory) {
             <th style="width:60px;">ID</th>
             <th>Medicine / Batch Item</th>
             <th>Current Quantity</th>
-            <th>Reorder Threshold</th>
+            <th>Reorder Level</th>
             <th>Status</th>
             <th style="width:170px; text-align:right;">
                 Actions
@@ -5310,6 +5306,7 @@ function renderInventoryTable(inventory) {
                         color:var(--text-muted);
                     "
                 >
+
                     <div style="
                         margin-bottom:0.5rem;
                         font-size:1.1rem;
@@ -5323,13 +5320,13 @@ function renderInventoryTable(inventory) {
                         automatically when a medicine
                         batch is registered.
                     </div>
+
                 </td>
             </tr>
 
         `);
 
         return;
-
     }
 
 
@@ -5337,22 +5334,63 @@ function renderInventoryTable(inventory) {
         inventory,
         function (index, item) {
 
+            // ------------------------------------------------
+            // Medicine name
+            // ------------------------------------------------
+
             const medicineName =
                 item.medicineName ||
+                item.medicineBatch?.medicine?.name ||
+                item.medicineBatch?.medicineName ||
                 (item.medicine && item.medicine.name) ||
-                "Unknown";
+                "Unknown Medicine";
+
+
+            // ------------------------------------------------
+            // Batch number
+            // ------------------------------------------------
+
+            const batchNumber =
+                item.batchNumber ||
+                item.medicineBatch?.batchNumber ||
+                "N/A";
+
+
+            // ------------------------------------------------
+            // Quantity
+            // ------------------------------------------------
 
             const quantity =
-                Number(item.quantity ?? 0);
+                Number(
+                    item.quantity ?? 0
+                );
 
-            const reorderThreshold =
-                Number(item.reorderThreshold ?? 0);
+
+            // ------------------------------------------------
+            // IMPORTANT:
+            // Backend field = reorderLevel
+            // ------------------------------------------------
+
+            const reorderLevel =
+                Number(
+                    item.reorderLevel ?? 0
+                );
+
+
+            // ------------------------------------------------
+            // Stock status
+            // ------------------------------------------------
 
             const lowStock =
-                quantity <= reorderThreshold;
+                quantity <= reorderLevel;
 
 
-            const $row = $("<tr>");
+            // ------------------------------------------------
+            // Row
+            // ------------------------------------------------
+
+            const $row =
+                $("<tr>");
 
 
             $row.append(`
@@ -5367,6 +5405,14 @@ function renderInventoryTable(inventory) {
                     <strong>
                         ${escapeHtml(medicineName)}
                     </strong>
+
+                    <div style="
+                        font-size:0.75rem;
+                        color:var(--text-muted);
+                        margin-top:3px;
+                    ">
+                        Batch: ${escapeHtml(batchNumber)}
+                    </div>
                 </td>
             `);
 
@@ -5380,13 +5426,14 @@ function renderInventoryTable(inventory) {
 
             $row.append(`
                 <td>
-                    ${reorderThreshold}
+                    ${reorderLevel}
                 </td>
             `);
 
 
             $row.append(`
                 <td>
+
                     <span
                         class="badge ${
                 lowStock
@@ -5394,15 +5441,22 @@ function renderInventoryTable(inventory) {
                     : "badge-success"
             }"
                     >
+
                         ${
                 lowStock
                     ? "Low Stock"
                     : "In Stock"
             }
+
                     </span>
+
                 </td>
             `);
 
+
+            // ------------------------------------------------
+            // Actions
+            // ------------------------------------------------
 
             const $actions =
                 $("<td>")
@@ -5410,6 +5464,8 @@ function renderInventoryTable(inventory) {
                         "text-align": "right"
                     });
 
+
+            // EDIT BUTTON
 
             const $editButton =
                 $("<button>", {
@@ -5442,12 +5498,14 @@ function renderInventoryTable(inventory) {
                         item.id,
                         medicineName,
                         quantity,
-                        reorderThreshold
+                        reorderLevel
                     );
 
                 }
             );
 
+
+            // DELETE BUTTON
 
             const $deleteButton =
                 $("<button>", {
@@ -5491,15 +5549,21 @@ function renderInventoryTable(inventory) {
                 .append($editButton)
                 .append($deleteButton);
 
-            $row.append($actions);
+
+            $row.append(
+                $actions
+            );
 
 
-            $body.append($row);
+            $body.append(
+                $row
+            );
 
         }
     );
 
 }
+
 
 // ============================================================
 // INVENTORY STATISTICS
@@ -5511,10 +5575,11 @@ function renderInventoryStats(inventory) {
         $("#workspace-stats");
 
 
-    if ($statsContainer.length === 0) {
+    if (
+        $statsContainer.length === 0
+    ) {
 
         return;
-
     }
 
 
@@ -5523,20 +5588,24 @@ function renderInventoryStats(inventory) {
             ? inventory
             : [];
 
+
     const total =
         list.length;
+
 
     const lowStockCount =
         list.filter(
             item =>
                 Number(item.quantity ?? 0) <=
-                Number(item.reorderThreshold ?? 0)
+                Number(item.reorderLevel ?? 0)
         ).length;
+
 
     const totalUnits =
         list.reduce(
             (sum, item) =>
-                sum + Number(item.quantity ?? 0),
+                sum +
+                Number(item.quantity ?? 0),
             0
         );
 
@@ -5544,53 +5613,94 @@ function renderInventoryStats(inventory) {
     $statsContainer.html(`
 
         <div class="glass-card stat-card animate-fade">
+
             <div class="stat-header">
+
                 <span class="stat-title">
                     Tracked Items
                 </span>
-                <div class="stat-icon">📦</div>
+
+                <div class="stat-icon">
+                    📦
+                </div>
+
             </div>
-            <div class="stat-val">${total}</div>
+
+            <div class="stat-val">
+                ${total}
+            </div>
+
             <span class="stat-desc">
                 Inventory records in the system
             </span>
+
         </div>
 
+
         <div class="glass-card stat-card animate-fade">
+
             <div class="stat-header">
+
                 <span class="stat-title">
                     Low Stock Alerts
                 </span>
-                <div class="stat-icon">⚠️</div>
+
+                <div class="stat-icon">
+                    ⚠️
+                </div>
+
             </div>
-            <div class="stat-val">${lowStockCount}</div>
+
+            <div class="stat-val">
+                ${lowStockCount}
+            </div>
+
             <span class="stat-desc">
-                Items at or below reorder threshold
+                Items at or below reorder level
             </span>
+
         </div>
 
+
         <div class="glass-card stat-card animate-fade">
+
             <div class="stat-header">
+
                 <span class="stat-title">
                     Total Units
                 </span>
-                <div class="stat-icon">🔢</div>
+
+                <div class="stat-icon">
+                    🔢
+                </div>
+
             </div>
-            <div class="stat-val">${totalUnits}</div>
+
+            <div class="stat-val">
+                ${totalUnits}
+            </div>
+
             <span class="stat-desc">
                 Physical units across all items
             </span>
+
         </div>
 
     `);
 
 }
 
+
 // ============================================================
 // INVENTORY - OPEN EDIT MODAL
 // ============================================================
 
-function editInventory(id, medicineName, quantity, reorderThreshold) {
+function editInventory(
+    id,
+    medicineName,
+    quantity,
+    reorderLevel
+) {
 
     const $idInput =
         $("#inventory-edit-id");
@@ -5625,129 +5735,157 @@ function editInventory(id, medicineName, quantity, reorderThreshold) {
     }
 
 
-    $idInput.val(id ?? "");
-
-    $nameInput.val(medicineName ?? "");
-
-    $qtyInput.val(quantity ?? 0);
-
-    $reorderInput.val(reorderThreshold ?? 0);
-
-
-    openModal("inventory-modal");
-}
-
-// ============================================================
-// INVENTORY - SAVE (UPDATE STOCK)
-// ============================================================
-
-async function saveInventory() {
-
-    const $idInput =
-        $("#inventory-edit-id");
-
-    const $qtyInput =
-        $("#inventory-qty");
-
-    const $reorderInput =
-        $("#inventory-reorder");
-
-
-    if (
-        $idInput.length === 0 ||
-        $qtyInput.length === 0 ||
-        $reorderInput.length === 0
-    ) {
-
-        console.error(
-            "Inventory form elements not found."
-        );
-
-        showToast(
-            "Inventory form fields not found.",
-            "danger"
-        );
-
-        return;
-    }
-
-
-    const id =
-        ($idInput.val() || "").trim();
-
-    const quantity =
-        Number($qtyInput.val());
-
-    const reorderThreshold =
-        Number($reorderInput.val());
-
-
-    if (!id) {
-
-        showToast(
-            "No inventory item selected.",
-            "danger"
-        );
-
-        return;
-    }
-
-
-    if (
-        isNaN(quantity) ||
-        quantity < 0
-    ) {
-
-        showToast(
-            "Please enter a valid quantity.",
-            "warning"
-        );
-
-        $qtyInput.focus();
-
-        return;
-    }
-
-
-    if (
-        isNaN(reorderThreshold) ||
-        reorderThreshold < 0
-    ) {
-
-        showToast(
-            "Please enter a valid reorder threshold.",
-            "warning"
-        );
-
-        $reorderInput.focus();
-
-        return;
-    }
-
-
-    const payload = {
-
-        quantity: quantity,
-
-        reorderThreshold: reorderThreshold
-
-    };
-
-
-    showToast(
-        "Updating stock...",
-        "info"
+    $idInput.val(
+        id ?? ""
     );
 
 
+    $nameInput.val(
+        medicineName ?? ""
+    );
+
+
+    $qtyInput.val(
+        quantity ?? 0
+    );
+
+
+    $reorderInput.val(
+        reorderLevel ?? 0
+    );
+
+
+    openModal(
+        "inventory-modal"
+    );
+}
+
+
+// ============================================================
+// INVENTORY - SAVE / UPDATE STOCK
+// ============================================================
+async function saveInventory() {
+
+    const id =
+        document.getElementById("inventory-edit-id").value;
+
+    const qty =
+        parseInt(
+            document.getElementById("inventory-qty").value
+        );
+
+    const reorder =
+        parseInt(
+            document.getElementById("inventory-reorder").value
+        );
+
+    if (!id) {
+        showToast(
+            "Inventory ID is missing.",
+            "danger"
+        );
+        return;
+    }
+
+    if (isNaN(qty) || isNaN(reorder)) {
+        showToast(
+            "Stock quantity and reorder level must be valid digits.",
+            "danger"
+        );
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // Get existing inventory record from backend
+    // ---------------------------------------------------------
+
+    showToast(
+        "Updating inventory...",
+        "info"
+    );
+
     try {
+
+        const getResponse =
+            await apiFetch(
+                `/v1/inventories/${id}`,
+                "GET"
+            );
+
+
+        if (
+            !getResponse ||
+            !getResponse.success
+        ) {
+
+            showToast(
+                getResponse?.message ||
+                "Cannot load inventory.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        const inventory =
+            getResponse.body;
+
+
+        if (!inventory) {
+
+            showToast(
+                "Inventory record not found.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        // ---------------------------------------------------------
+        // Keep existing relationship IDs
+        // ---------------------------------------------------------
+
+        const requestBody = {
+
+            pharmacyBranchId:
+            inventory.pharmacyBranchId,
+
+            medicineBatchId:
+            inventory.medicineBatchId,
+
+            quantity:
+            qty,
+
+            reorderLevel:
+            reorder
+        };
+
+
+        console.log(
+            "Updating Inventory:",
+            requestBody
+        );
+
+
+        // ---------------------------------------------------------
+        // PUT request
+        // ---------------------------------------------------------
 
         const response =
             await apiFetch(
                 `/v1/inventories/${id}`,
                 "PUT",
-                payload
+                requestBody
             );
+
+
+        console.log(
+            "Inventory Update Response:",
+            response
+        );
 
 
         if (
@@ -5757,7 +5895,7 @@ async function saveInventory() {
 
             showToast(
                 response?.message ||
-                "Failed to update stock.",
+                "Failed to update inventory.",
                 "danger"
             );
 
@@ -5765,11 +5903,9 @@ async function saveInventory() {
         }
 
 
-        showToast(
-            "Stock updated successfully!",
-            "success"
-        );
-
+        // ---------------------------------------------------------
+        // Success
+        // ---------------------------------------------------------
 
         closeModal(
             "inventory-modal"
@@ -5781,15 +5917,21 @@ async function saveInventory() {
         );
 
 
+        showToast(
+            "Inventory updated successfully.",
+            "success"
+        );
+
+
     } catch (error) {
 
         console.error(
-            "Error updating stock:",
+            "Inventory update error:",
             error
         );
 
         showToast(
-            "Error updating stock.",
+            "Error updating inventory.",
             "danger"
         );
     }
@@ -5863,9 +6005,9 @@ async function deleteInventory(id) {
             "Error deleting inventory record.",
             "danger"
         );
+
     }
 }
-
 // ============================================================
 // NOTIFICATIONS - GET ALL FROM BACKEND
 // ============================================================
@@ -6381,15 +6523,18 @@ async function saveNotification() {
     }
 
 
+    const session =
+        JSON.parse(
+            localStorage.getItem("medifind_session")
+        );
+
     const payload = {
 
         title: title,
 
         message: message,
 
-        type: type,
-
-        audience: audience
+        userId: session.id
 
     };
 
@@ -6529,14 +6674,6 @@ async function deleteNotification(id) {
 // ============================================================
 // REPORTS - GET SUMMARY FROM BACKEND
 // ============================================================
-//
-// NOTE: Unlike the other entities, the backend Reports API
-// (GET /v1/reports) is a single read-only endpoint that
-// returns one summary object (Map<String,Object>) — there is
-// no create, update, or delete, and no list of saved report
-// records. So this section is a read-only analytics view,
-// not a CRUD table.
-// ============================================================
 
 async function loadDashboardReports() {
 
@@ -6607,10 +6744,7 @@ async function loadDashboardReports() {
 // REPORTS - RENDER SUMMARY TABLE
 // ============================================================
 //
-// The backend returns an arbitrary key/value summary object,
-// so instead of a fixed set of columns we render every
-// key/value pair the backend sends back as a metric row.
-// ============================================================
+
 
 function renderReportTable(report) {
 
@@ -6782,11 +6916,6 @@ function formatReportValue(value) {
 // ============================================================
 // REPORT STATISTICS
 // ============================================================
-//
-// Shows up to the first 3 numeric metrics from the summary
-// as highlight cards. Falls back gracefully if the backend
-// sends fewer than 3 numeric fields.
-// ============================================================
 
 function renderReportStats(report) {
 
@@ -6951,14 +7080,6 @@ async function loadWorkspaceTab(tabId) {
 
         `);
 
-
-        /*
-         * IMPORTANT:
-         *
-         * No inline onclick.
-         *
-         * jQuery event binding.
-         */
 
         $("#add-category-btn").on(
             "click",
@@ -7236,24 +7357,13 @@ async function loadWorkspaceTab(tabId) {
         );
 
 
-        const inventory =
-            await loadDashboardInventory();
-
-
-        renderInventoryTable(
-            inventory
-        );
-
-
-        renderInventoryStats(
-            inventory
-        );
-
+        const inventory = await loadDashboardInventory();
+        renderInventoryTable(inventory);
+        renderInventoryStats(inventory);
 
         return;
 
     }
-
 
     // ========================================================
     // NOTIFICATIONS
@@ -7328,10 +7438,6 @@ async function loadWorkspaceTab(tabId) {
             "Live analytics summary returned by the reports API."
         );
 
-
-        // No create/edit/delete actions here — the backend
-        // Reports API (GET /v1/reports) is a single read-only
-        // summary endpoint.
 
 
         const report =

@@ -89,7 +89,6 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.GET, "/v1/reports").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/v1/reports").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/auth/users").hasAnyRole("CUSTOMER")
                         .anyRequest().authenticated()
