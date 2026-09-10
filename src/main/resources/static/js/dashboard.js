@@ -5152,6 +5152,1046 @@ async function deleteReservation(id) {
         );
     }
 }
+
+// ============================================================
+// MEDICINE BATCHES - GET ALL FROM BACKEND
+// ============================================================
+
+async function loadDashboardBatches() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/medicine-batches",
+                "GET"
+            );
+
+        console.log(
+            "Dashboard Medicine Batches API Response:",
+            response
+        );
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load medicine batches:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load medicine batches.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let batches =
+            response.body;
+
+        if (!Array.isArray(batches)) {
+
+            if (
+                batches &&
+                Array.isArray(batches.content)
+            ) {
+
+                batches =
+                    batches.content;
+
+            } else {
+
+                batches = [];
+            }
+        }
+
+        console.log(
+            "Medicine Batches from Backend:",
+            batches
+        );
+
+        return batches;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading medicine batches:",
+            error
+        );
+
+        showToast(
+            "Error loading medicine batches.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+
+// ============================================================
+// MEDICINE BATCHES - RENDER TABLE
+// ============================================================
+
+function renderBatchTable(batches) {
+
+    const $head =
+        $("#workspace-table-head");
+
+    const $body =
+        $("#workspace-table-body");
+
+    const $panelTitle =
+        $("#table-panel-title");
+
+
+    if (
+        $head.length === 0 ||
+        $body.length === 0
+    ) {
+
+        console.error(
+            "Batch table elements not found."
+        );
+
+        return;
+
+    }
+
+
+    if ($panelTitle.length > 0) {
+
+        $panelTitle.text(
+            "Medicine Import Batches"
+        );
+
+    }
+
+
+    $head.html(`
+ 
+        <tr>
+            <th style="width:60px;">ID</th>
+            <th>Medicine</th>
+            <th>Batch Number</th>
+            <th>Unit Price</th>
+            <th>Quantity</th>
+            <th>Manufacture Date</th>
+            <th>Expiry Date</th>
+            <th style="width:170px; text-align:right;">
+                Actions
+            </th>
+        </tr>
+ 
+    `);
+
+
+    $body.empty();
+
+
+    if (
+        !Array.isArray(batches) ||
+        batches.length === 0
+    ) {
+
+        $body.html(`
+ 
+            <tr>
+                <td
+                    colspan="8"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div style="
+                        margin-bottom:0.5rem;
+                        font-size:1.1rem;
+                        font-weight:500;
+                    ">
+                        No medicine batches found
+                    </div>
+ 
+                    <div style="font-size:0.85rem;">
+                        Click "Register Batch" above to add
+                        your first import batch.
+                    </div>
+                </td>
+            </tr>
+ 
+        `);
+
+        return;
+
+    }
+
+
+    const today =
+        new Date();
+
+
+    $.each(
+        batches,
+        function (index, batch) {
+
+            const medicineName =
+                batch.medicineName ||
+                (batch.medicine && batch.medicine.name) ||
+                "Unknown Medicine";
+
+            const expiryDate =
+                batch.expiryDate
+                    ? new Date(batch.expiryDate)
+                    : null;
+
+            const isExpired =
+                expiryDate &&
+                expiryDate < today;
+
+            const isExpiringSoon =
+                expiryDate &&
+                !isExpired &&
+                (
+                    (expiryDate - today) /
+                    (1000 * 60 * 60 * 24)
+                ) <= 30;
+
+
+            const $row = $("<tr>");
+
+
+            $row.append(`
+                <td>
+                    #${escapeHtml(batch.id)}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    <strong>
+                        ${escapeHtml(medicineName)}
+                    </strong>
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${escapeHtml(batch.batchNumber || "")}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    LKR ${escapeHtml(
+                Number(batch.unitPrice ?? 0).toFixed(2)
+            )}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${escapeHtml(batch.quantity ?? 0)}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${escapeHtml(batch.manufactureDate || "")}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${escapeHtml(batch.expiryDate || "")}
+                    ${
+                isExpired
+                    ? '<span class="badge badge-danger" style="margin-left:6px;">Expired</span>'
+                    : isExpiringSoon
+                        ? '<span class="badge badge-warning" style="margin-left:6px;">Expiring Soon</span>'
+                        : ""
+            }
+                </td>
+            `);
+
+
+            const $actions =
+                $("<td>")
+                    .css({
+                        "text-align": "right"
+                    });
+
+
+            const $editButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Edit"
+
+                });
+
+
+            $editButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                marginRight: "6px"
+
+            });
+
+
+            $editButton.on(
+                "click",
+                function () {
+
+                    editBatch(
+                        batch.id
+                    );
+
+                }
+            );
+
+
+            const $deleteButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Delete"
+
+                });
+
+
+            $deleteButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                color: "var(--accent-rose)",
+
+                borderColor:
+                    "rgba(244, 63, 94, 0.3)"
+
+            });
+
+
+            $deleteButton.on(
+                "click",
+                function () {
+
+                    deleteBatch(
+                        batch.id
+                    );
+
+                }
+            );
+
+
+            $actions
+                .append($editButton)
+                .append($deleteButton);
+
+            $row.append($actions);
+
+
+            $body.append($row);
+
+        }
+    );
+
+}
+
+
+// ============================================================
+// MEDICINE BATCH STATISTICS
+// ============================================================
+
+function renderBatchStats(batches) {
+
+    const $statsContainer =
+        $("#workspace-stats");
+
+
+    if ($statsContainer.length === 0) {
+
+        return;
+
+    }
+
+
+    const list =
+        Array.isArray(batches)
+            ? batches
+            : [];
+
+    const total =
+        list.length;
+
+    const totalUnits =
+        list.reduce(
+            (sum, batch) =>
+                sum + Number(batch.quantity ?? 0),
+            0
+        );
+
+
+    const today =
+        new Date();
+
+    const expiringSoon =
+        list.filter(
+            batch => {
+
+                if (!batch.expiryDate) {
+                    return false;
+                }
+
+                const expiryDate =
+                    new Date(batch.expiryDate);
+
+                const daysLeft =
+                    (expiryDate - today) /
+                    (1000 * 60 * 60 * 24);
+
+                return (
+                    daysLeft >= 0 &&
+                    daysLeft <= 30
+                );
+            }
+        ).length;
+
+
+    $statsContainer.html(`
+ 
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Total Batches
+                </span>
+                <div class="stat-icon">🧾</div>
+            </div>
+            <div class="stat-val">${total}</div>
+            <span class="stat-desc">
+                Import batches registered
+            </span>
+        </div>
+ 
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Total Units Imported
+                </span>
+                <div class="stat-icon">🔢</div>
+            </div>
+            <div class="stat-val">${totalUnits}</div>
+            <span class="stat-desc">
+                Units across all batches
+            </span>
+        </div>
+ 
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Expiring Soon
+                </span>
+                <div class="stat-icon">⏳</div>
+            </div>
+            <div class="stat-val">${expiringSoon}</div>
+            <span class="stat-desc">
+                Batches expiring within 30 days
+            </span>
+        </div>
+ 
+    `);
+
+}
+
+// ============================================================
+// MEDICINE BATCH - OPEN MODAL (CREATE / EDIT)
+// ============================================================
+
+async function openBatchModal(batch = null) {
+
+    const $title =
+        $("#batch-modal-title");
+
+    const $idInput =
+        $("#batch-edit-id");
+
+    const $medicineInput =
+        $("#batch-medicine");
+
+    const $numInput =
+        $("#batch-num");
+
+    const $priceInput =
+        $("#batch-price");
+
+    const $qtyInput =
+        $("#batch-qty");
+
+    const $mfgInput =
+        $("#batch-mfg");
+
+    const $expInput =
+        $("#batch-exp");
+
+
+    if (
+        $title.length === 0 ||
+        $idInput.length === 0 ||
+        $medicineInput.length === 0 ||
+        $numInput.length === 0 ||
+        $priceInput.length === 0 ||
+        $qtyInput.length === 0 ||
+        $mfgInput.length === 0 ||
+        $expInput.length === 0
+    ) {
+
+        console.error(
+            "Batch modal elements are missing from dashboard.html"
+        );
+
+        showToast(
+            "Batch form could not be opened.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // Load medicines into the dropdown
+    // ---------------------------------------------------------
+
+    const medicines =
+        await loadDashboardMedicines();
+
+
+    $medicineInput.html(`
+        <option value="">
+            Select medicine
+        </option>
+    `);
+
+
+    $.each(
+        medicines,
+        function (index, medicine) {
+
+            $medicineInput.append(
+                $("<option>", {
+                    value: medicine.id,
+                    text: medicine.name
+                })
+            );
+
+        }
+    );
+
+
+    // ---------------------------------------------------------
+    // CREATE
+    // ---------------------------------------------------------
+
+    if (!batch) {
+
+        $title.text(
+            "Register Medicine Import Batch"
+        );
+
+        $idInput.val("");
+
+        $medicineInput.val("");
+
+        $numInput.val("");
+
+        $priceInput.val("");
+
+        $qtyInput.val("");
+
+        $mfgInput.val("");
+
+        $expInput.val("");
+
+
+        openModal("batch-modal");
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // EDIT
+    // ---------------------------------------------------------
+
+    $title.text(
+        "Edit Medicine Batch"
+    );
+
+    $idInput.val(
+        batch.id ?? ""
+    );
+
+    $medicineInput.val(
+        batch.medicineId ?? ""
+    );
+
+    $numInput.val(
+        batch.batchNumber ?? ""
+    );
+
+    $priceInput.val(
+        batch.unitPrice ?? ""
+    );
+
+    $qtyInput.val(
+        batch.quantity ?? ""
+    );
+
+    $mfgInput.val(
+        batch.manufactureDate ?? ""
+    );
+
+    $expInput.val(
+        batch.expiryDate ?? ""
+    );
+
+
+    openModal("batch-modal");
+}
+
+
+
+// ============================================================
+// MEDICINE BATCH - SAVE (CREATE / UPDATE)
+// ============================================================
+
+async function saveBatch() {
+
+    const $idInput =
+        $("#batch-edit-id");
+
+    const $medicineInput =
+        $("#batch-medicine");
+
+    const $numInput =
+        $("#batch-num");
+
+    const $priceInput =
+        $("#batch-price");
+
+    const $qtyInput =
+        $("#batch-qty");
+
+    const $mfgInput =
+        $("#batch-mfg");
+
+    const $expInput =
+        $("#batch-exp");
+
+
+    if (
+        $medicineInput.length === 0 ||
+        $numInput.length === 0 ||
+        $priceInput.length === 0 ||
+        $qtyInput.length === 0 ||
+        $mfgInput.length === 0 ||
+        $expInput.length === 0
+    ) {
+
+        console.error(
+            "Batch form elements not found."
+        );
+
+        showToast(
+            "Batch form fields not found.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    const medicineId =
+        ($medicineInput.val() || "").trim();
+
+    const batchNumber =
+        ($numInput.val() || "").trim();
+
+    const unitPrice =
+        Number($priceInput.val());
+
+    const quantity =
+        Number($qtyInput.val());
+
+    const manufactureDate =
+        $mfgInput.val();
+
+    const expiryDate =
+        $expInput.val();
+
+
+    // ---------------------------------------------------------
+    // Validation
+    // ---------------------------------------------------------
+
+    if (!medicineId) {
+
+        showToast(
+            "Please select a medicine.",
+            "warning"
+        );
+
+        $medicineInput.focus();
+
+        return;
+    }
+
+
+    if (!batchNumber) {
+
+        showToast(
+            "Batch number is required.",
+            "warning"
+        );
+
+        $numInput.focus();
+
+        return;
+    }
+
+
+    if (
+        isNaN(unitPrice) ||
+        unitPrice < 0
+    ) {
+
+        showToast(
+            "Please enter a valid unit price.",
+            "warning"
+        );
+
+        $priceInput.focus();
+
+        return;
+    }
+
+
+    if (
+        isNaN(quantity) ||
+        quantity < 0 ||
+        !Number.isInteger(quantity)
+    ) {
+
+        showToast(
+            "Please enter a valid whole number for quantity.",
+            "warning"
+        );
+
+        $qtyInput.focus();
+
+        return;
+    }
+
+
+    // NOTE: manufactureDate has no @NotNull in MedicineBatchReqDTO,
+    // so it's optional here too — not required.
+
+
+    if (!expiryDate) {
+
+        showToast(
+            "Expiry date is required.",
+            "warning"
+        );
+
+        $expInput.focus();
+
+        return;
+    }
+
+
+    // ---------------------------------------------------------
+    // Detect CREATE / UPDATE
+    // ---------------------------------------------------------
+
+    const editId =
+        ($idInput.val() || "").trim();
+
+    const isEdit =
+        editId !== "";
+
+
+    const payload = {
+
+        medicineId: Number(medicineId),
+
+        batchNumber: batchNumber,
+
+        unitPrice: unitPrice,
+
+        quantity: quantity,
+
+        // Send null (not "") when left blank — an empty
+        // string cannot be parsed into a LocalDate by Jackson
+        // and would cause a 400 error.
+        manufactureDate:
+            manufactureDate
+                ? manufactureDate
+                : null,
+
+        expiryDate: expiryDate
+
+    };
+
+
+    showToast(
+        isEdit
+            ? "Updating medicine batch..."
+            : "Registering medicine batch...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            isEdit
+                ? await apiFetch(
+                    `/v1/medicine-batches/${editId}`,
+                    "PUT",
+                    payload
+                )
+                : await apiFetch(
+                    "/v1/medicine-batches",
+                    "POST",
+                    payload
+                );
+
+
+        console.log(
+            "Save Medicine Batch Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to save medicine batch.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            isEdit
+                ? "Medicine batch updated successfully!"
+                : "Medicine batch registered successfully!",
+            "success"
+        );
+
+
+        closeModal(
+            "batch-modal"
+        );
+
+
+        await loadWorkspaceTab(
+            "batches"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error saving medicine batch:",
+            error
+        );
+
+        showToast(
+            "Error saving medicine batch.",
+            "danger"
+        );
+    }
+}
+
+
+async function editBatch(id) {
+
+    try {
+
+        showToast(
+            "Loading medicine batch...",
+            "info"
+        );
+
+
+        const response =
+            await apiFetch(
+                `/v1/medicine-batches/${id}`,
+                "GET"
+            );
+
+
+        console.log(
+            "Edit Medicine Batch API Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Cannot load medicine batch.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        const batch =
+            response.body;
+
+
+        if (!batch) {
+
+            showToast(
+                "Medicine batch not found.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        await openBatchModal(
+            batch
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Error loading medicine batch:",
+            error
+        );
+
+        showToast(
+            "Error loading medicine batch.",
+            "danger"
+        );
+    }
+}
+
+
+// ============================================================
+// MEDICINE BATCH - DELETE
+// ============================================================
+
+async function deleteBatch(id) {
+
+    if (
+        !confirm(
+            `Are you sure you want to delete batch #${id}? This cannot be undone.`
+        )
+    ) {
+
+        return;
+    }
+
+
+    showToast(
+        "Deleting medicine batch...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/medicine-batches/${id}`,
+                "DELETE"
+            );
+
+
+        console.log(
+            "Delete Medicine Batch Response:",
+            response
+        );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete medicine batch.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Medicine batch deleted successfully!",
+            "success"
+        );
+
+
+        await loadWorkspaceTab(
+            "batches"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting medicine batch:",
+            error
+        );
+
+        showToast(
+            "Error deleting medicine batch.",
+            "danger"
+        );
+    }
+}
 // ============================================================
 // INVENTORY - GET ALL FROM BACKEND
 // ============================================================
@@ -7342,6 +8382,63 @@ async function loadWorkspaceTab(tabId) {
 
 
     // ========================================================
+    // MEDICINE BATCHES
+    // ========================================================
+
+    if (tabId === "batches") {
+
+        $wTitle.text(
+            "Medicine Import Batches"
+        );
+
+
+        $wDesc.text(
+            "Register and track incoming stock batches per medicine."
+        );
+
+
+        $wActions.html(`
+ 
+            <button
+                type="button"
+                id="register-batch-btn"
+                class="btn btn-primary"
+            >
+                + Register Batch
+            </button>
+ 
+        `);
+
+
+        $("#register-batch-btn").on(
+            "click",
+            function () {
+
+                openBatchModal();
+
+            }
+        );
+
+
+        const batches =
+            await loadDashboardBatches();
+
+
+        renderBatchTable(
+            batches
+        );
+
+
+        renderBatchStats(
+            batches
+        );
+
+
+        return;
+
+    }
+
+    // ========================================================
     // INVENTORY
     // ========================================================
 
@@ -7479,6 +8576,7 @@ function getTabFriendlyName(tabId) {
         medicines: "Medicines",
         pharmacies: "Pharmacies",
         branches: "Branches",
+        batches: "Medicine Batches",
         inventory: "Inventory",
         notifications: "Notifications",
         reports: "Reports",
@@ -7556,6 +8654,13 @@ function switchRole(role) {
            </svg>
             Pharmacies
             </li>
+            
+            <li class="sidebar-item" onclick="selectSidebarTab(this, 'batches')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+            </svg>
+             Batches
+             </li>
 
             <li class="sidebar-item" onclick="selectSidebarTab(this, 'inventory')">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -7578,7 +8683,7 @@ function switchRole(role) {
              Reports
              </li>
             `;
-           loadWorkspaceTab("categories");
+        loadWorkspaceTab("categories");
 
     } else if (role === "PHARMACY_ADMIN") {
         if (sidebarTitle) sidebarTitle.textContent = "Pharmacy Admin";
@@ -7625,17 +8730,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-// ============================================================
-// GLOBAL EXPORTS
-// ============================================================
-// Required so inline onclick="..." attributes in the HTML
-// (e.g. onclick="closeModal('category-modal')",
-// onclick="saveCategory()") can find these functions on
-// window. Without this, buttons bound via inline onclick
-// silently fail with "X is not defined" if this script is
-// ever loaded as type="module" or otherwise scoped.
-// ============================================================
-
 // Modal controls
 window.openModal = openModal;
 window.closeModal = closeModal;
@@ -7669,6 +8763,12 @@ window.processReservation = processReservation;
 window.saveReservationStatus = saveReservationStatus;
 window.deleteReservation = deleteReservation;
 
+// Medicine Batches
+window.openBatchModal = openBatchModal;
+window.editBatch = editBatch;
+window.saveBatch = saveBatch;
+window.deleteBatch = deleteBatch;
+
 // Inventory
 window.editInventory = editInventory;
 window.saveInventory = saveInventory;
@@ -7685,4 +8785,3 @@ window.deleteNotification = deleteNotification;
 // Sidebar & role switching
 window.selectSidebarTab = selectSidebarTab;
 window.switchRole = switchRole;
-
