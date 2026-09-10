@@ -9,6 +9,38 @@
 </head>
 <body>
 
+<!-- ============================================================
+     DASHBOARD LOGIN SCREEN
+============================================================ -->
+
+<div id="dashboard-login-screen" class="dashboard-login-screen">
+    <div class="dashboard-login-card">
+        <div class="dashboard-login-logo">MediFind</div>
+        <h1>Dashboard Login</h1>
+        <p class="dashboard-login-subtitle">Authorized staff and administrators only</p>
+
+        <div class="form-group">
+            <label for="dashboard-login-email">Email</label>
+            <input type="email" id="dashboard-login-email" placeholder="Enter your email" autocomplete="username">
+        </div>
+
+        <div class="form-group">
+            <label for="dashboard-login-password">Password</label>
+            <input type="password" id="dashboard-login-password" placeholder="Enter your password" autocomplete="current-password">
+        </div>
+
+        <div id="dashboard-login-error" class="dashboard-login-error" style="display:none;"></div>
+
+        <button type="button" id="dashboard-login-button" onclick="handleDashboardLogin()">Sign In</button>
+
+        <button type="button" class="dashboard-back-button" onclick="window.location.href='index.html'">
+            Back to MediFind
+        </button>
+
+    </div>
+
+</div>
+
 <!-- Demo Role Switcher Toolbar -->
 <div class="demo-bar animate-fade">
     <div class="demo-title">

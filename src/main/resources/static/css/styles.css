@@ -178,7 +178,7 @@ a {
 }
 
 a:hover {
-    color: var(--primary-light);
+    color : #f59e0b;
 }
 
 button, .btn {
@@ -1186,5 +1186,309 @@ tr:hover td {
     .cart-floating {
         bottom: 1rem;
         right: 1rem;
+    }
+}
+/* ============================================================
+   DASHBOARD LOGIN SCREEN
+============================================================ */
+
+.dashboard-login-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background:
+            radial-gradient(
+                    circle at top right,
+                    rgba(13, 148, 136, 0.12),
+                    transparent 40%
+            ),
+            radial-gradient(
+                    circle at bottom left,
+                    rgba(14, 165, 233, 0.08),
+                    transparent 40%
+            ),
+            var(--bg-dark);
+
+    padding: 1rem;
+}
+
+
+/* ============================================================
+   LOGIN CARD
+============================================================ */
+
+.dashboard-login-card {
+    width: min(420px, 92%);
+
+    padding: 2.5rem;
+
+    border-radius: var(--radius-lg);
+
+    background: var(--glass-bg);
+
+    border: 1px solid var(--glass-border);
+
+    box-shadow:
+            0 25px 60px var(--glass-shadow),
+            0 8px 25px rgba(13, 148, 136, 0.06);
+
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+
+    text-align: center;
+}
+
+
+/* ============================================================
+   LOGO
+============================================================ */
+
+.dashboard-login-logo {
+    font-size: 1.8rem;
+    font-weight: 800;
+
+    margin-bottom: 1rem;
+
+    color: var(--primary);
+
+    font-family: var(--font-title);
+}
+
+
+/* ============================================================
+   TITLE
+============================================================ */
+
+.dashboard-login-card h1 {
+    margin: 0;
+
+    font-family: var(--font-title);
+
+    font-size: 1.7rem;
+    font-weight: 700;
+
+    color: var(--text-primary);
+}
+
+
+/* ============================================================
+   SUBTITLE
+============================================================ */
+
+.dashboard-login-subtitle {
+    margin: 0.6rem 0 2rem;
+
+    color: var(--text-muted);
+
+    font-size: 0.9rem;
+}
+
+
+/* ============================================================
+   FORM GROUP
+============================================================ */
+
+.dashboard-login-card .form-group {
+    text-align: left;
+
+    margin-bottom: 1.2rem;
+}
+
+
+/* ============================================================
+   LABEL
+============================================================ */
+
+.dashboard-login-card label {
+    display: block;
+
+    margin-bottom: 0.45rem;
+
+    color: var(--text-secondary);
+
+    font-size: 0.85rem;
+
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   INPUT
+============================================================ */
+
+.dashboard-login-card input {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 0.8rem 0.9rem;
+
+    border-radius: var(--radius-sm);
+
+    border: 1px solid var(--border-color);
+
+    background: #ffffff;
+
+    color: var(--text-primary);
+
+    outline: none;
+
+    font-family: var(--font-body);
+
+    transition:
+            border-color var(--transition-fast),
+            box-shadow var(--transition-fast),
+            background var(--transition-fast);
+}
+
+
+.dashboard-login-card input::placeholder {
+    color: var(--text-muted);
+}
+
+
+.dashboard-login-card input:focus {
+    border-color: var(--primary);
+
+    background: #ffffff;
+
+    box-shadow:
+            0 0 0 3px var(--primary-glow);
+}
+
+
+/* ============================================================
+   LOGIN BUTTON
+============================================================ */
+
+#dashboard-login-button {
+    width: 100%;
+
+    padding: 0.85rem;
+
+    margin-top: 0.5rem;
+
+    border: none;
+
+    border-radius: var(--radius-sm);
+
+    background: var(--primary);
+
+    color: #ffffff;
+
+    font-family: var(--font-body);
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+            background var(--transition-fast),
+            transform var(--transition-fast),
+            box-shadow var(--transition-fast);
+}
+
+
+#dashboard-login-button:hover {
+    background: var(--primary-hover);
+
+    transform: translateY(-1px);
+
+    box-shadow:
+            0 8px 20px rgba(13, 148, 136, 0.22);
+}
+
+
+#dashboard-login-button:active {
+    transform: translateY(0);
+}
+
+
+#dashboard-login-button:disabled {
+    opacity: 0.6;
+
+    cursor: not-allowed;
+
+    transform: none;
+
+    box-shadow: none;
+}
+
+
+/* ============================================================
+   LOGIN ERROR
+============================================================ */
+
+.dashboard-login-error {
+    margin-bottom: 1rem;
+
+    padding: 0.7rem;
+
+    border-radius: var(--radius-sm);
+
+    background: rgba(244, 63, 94, 0.08);
+
+    border: 1px solid rgba(244, 63, 94, 0.25);
+
+    color: #e11d48;
+
+    font-size: 0.85rem;
+}
+
+
+/* ============================================================
+   BACK BUTTON
+============================================================ */
+
+.dashboard-back-button {
+    width: 100%;
+
+    margin-top: 0.9rem;
+
+    padding: 0.7rem;
+
+    border: none;
+
+    background: transparent;
+
+    color: var(--text-muted);
+
+    font-family: var(--font-body);
+
+    cursor: pointer;
+
+    transition:
+            color var(--transition-fast);
+}
+
+
+.dashboard-back-button:hover {
+    color: var(--primary);
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 480px) {
+
+    .dashboard-login-card {
+        padding: 2rem 1.5rem;
+
+        border-radius: var(--radius-md);
+    }
+
+    .dashboard-login-card h1 {
+        font-size: 1.5rem;
+    }
+
+    .dashboard-login-logo {
+        font-size: 1.6rem;
     }
 }
