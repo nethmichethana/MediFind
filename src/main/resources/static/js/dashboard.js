@@ -9,7 +9,11 @@ const API_BASE_URL = "http://localhost:8080";
 // ============================================================
 
 function escapeHtml(str) {
-    if (str === null || str === undefined) return "";
+
+    if (str === null || str === undefined) {
+        return "";
+    }
+
     return String(str)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -23,57 +27,92 @@ function escapeHtml(str) {
 // ============================================================
 
 function showToast(message, type = "success") {
-    const existingToast = document.querySelector(".medifind-toast");
-    if (existingToast && existingToast.parentNode) {
-        existingToast.parentNode.removeChild(existingToast);
-    }
 
-    const toast = document.createElement("div");
-    toast.className = "medifind-toast animate-fade";
+    // Remove existing toast
+    $(".medifind-toast").remove();
 
-    toast.style.position = "fixed";
-    toast.style.bottom = "2rem";
-    toast.style.left = "2rem";
-    toast.style.padding = "0.75rem 1.5rem";
-    toast.style.borderRadius = "8px";
-    toast.style.zIndex = "10000";
-    toast.style.fontWeight = "600";
-    toast.style.fontSize = "0.9rem";
-    toast.style.boxShadow = "0 8px 30px rgba(0,0,0,0.4)";
-    toast.style.transition = "opacity 0.4s ease";
 
+    // Create toast using jQuery
+    const $toast = $("<div>", {
+        class: "medifind-toast animate-fade"
+    });
+
+
+    // Common toast styles
+    $toast.css({
+        position: "fixed",
+        bottom: "2rem",
+        left: "2rem",
+        padding: "0.75rem 1.5rem",
+        borderRadius: "8px",
+        zIndex: "10000",
+        fontWeight: "600",
+        fontSize: "0.9rem",
+        boxShadow: "0 8px 30px rgba(0,0,0,0.4)",
+        transition: "opacity 0.4s ease"
+    });
+
+
+    // Toast type styles
     if (type === "success") {
-        toast.style.background = "#10b981";
-        toast.style.color = "white";
+
+        $toast.css({
+            background: "#10b981",
+            color: "white"
+        });
+
     } else if (type === "danger") {
-        toast.style.background = "#f43f5e";
-        toast.style.color = "white";
+
+        $toast.css({
+            background: "#f43f5e",
+            color: "white"
+        });
+
     } else if (type === "warning") {
-        toast.style.background = "#f59e0b";
-        toast.style.color = "white";
+
+        $toast.css({
+            background: "#f59e0b",
+            color: "white"
+        });
+
     } else {
-        toast.style.background = "#1e293b";
-        toast.style.color = "white";
+
+        $toast.css({
+            background: "#1e293b",
+            color: "white"
+        });
     }
 
-    toast.textContent = message;
-    document.body.appendChild(toast);
 
-    setTimeout(() => {
-        toast.style.opacity = "0";
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
+    // Set message
+    $toast.text(message);
+
+
+    // Add toast to body
+    $("body").append($toast);
+
+
+    // Fade out after 3.2 seconds
+    setTimeout(function () {
+
+        $toast.css("opacity", "0");
+
+
+        // Remove after fade animation
+        setTimeout(function () {
+
+            $toast.remove();
+
         }, 400);
+
     }, 3200);
 }
-
 // ============================================================
-// API FETCH HELPER
+// API AJAX HELPER - jQuery
 // ============================================================
 
-async function apiFetch(endpoint, method = "GET", body = null) {
+function apiFetch(endpoint, method = "GET", body = null) {
+
     const token = localStorage.getItem("medifind_token");
 
     const headers = {
@@ -84,335 +123,1235 @@ async function apiFetch(endpoint, method = "GET", body = null) {
         headers["Authorization"] = "Bearer " + token;
     }
 
-    const options = {
-        method: method,
-        headers: headers
+    const ajaxOptions = {
+        url: API_BASE_URL + endpoint,
+        type: method,
+        headers: headers,
+        dataType: "json"
     };
 
+    // Request body
     if (body !== null) {
-        options.body = JSON.stringify(body);
+        ajaxOptions.data = JSON.stringify(body);
     }
 
-    try {
-        const response = await fetch(API_BASE_URL + endpoint, options);
+    return new Promise(function (resolve) {
 
-        const contentType = response.headers.get("content-type");
-        let data;
+        $.ajax(ajaxOptions)
 
-        if (contentType && contentType.includes("application/json")) {
-            data = await response.json();
-        } else {
-            data = await response.text();
-        }
+            // ------------------------------------------------
+            // SUCCESS
+            // ------------------------------------------------
+            .done(function (data, textStatus, jqXHR) {
 
-        console.log("API Response:", {
-            endpoint,
-            method,
-            httpStatus: response.status,
-            data
-        });
+                console.log("API Response:", {
+                    endpoint: endpoint,
+                    method: method,
+                    httpStatus: jqXHR.status,
+                    data: data
+                });
 
-        if (!response.ok) {
-            return {
-                success: false,
-                httpStatus: response.status,
-                status: (typeof data === "object" && data?.status !== undefined) ? data.status : response.status,
-                body: null,
-                message: (typeof data === "object" && (data?.message || data?.error))
-                    ? (data.message || data.error)
-                    : `Server returned HTTP ${response.status}`
-            };
-        }
+                const applicationStatus =
+                    (
+                        typeof data === "object" &&
+                        data !== null &&
+                        data.status !== undefined
+                    )
+                        ? data.status
+                        : 0;
 
-        const applicationStatus = (typeof data === "object" && data?.status !== undefined) ? data.status : 0;
-        const responseBody = (typeof data === "object" && data?.body !== undefined) ? data.body : data;
-        const responseMessage = (typeof data === "object" && data?.message) ? data.message : "Operation Successful";
+                const responseBody =
+                    (
+                        typeof data === "object" &&
+                        data !== null &&
+                        data.body !== undefined
+                    )
+                        ? data.body
+                        : data;
 
-        return {
-            success: true,
-            httpStatus: response.status,
-            status: applicationStatus,
-            body: responseBody,
-            message: responseMessage
-        };
+                const responseMessage =
+                    (
+                        typeof data === "object" &&
+                        data !== null &&
+                        data.message
+                    )
+                        ? data.message
+                        : "Operation Successful";
 
-    } catch (error) {
-        console.error("API Network Error:", error);
-        return {
-            success: false,
-            httpStatus: 0,
-            status: null,
-            body: null,
-            message: "Cannot connect to server. Ensure Spring Boot is running on port 8080."
-        };
-    }
+                resolve({
+                    success: true,
+                    httpStatus: jqXHR.status,
+                    status: applicationStatus,
+                    body: responseBody,
+                    message: responseMessage
+                });
+            })
+
+            // ------------------------------------------------
+            // ERROR
+            // ------------------------------------------------
+            .fail(function (jqXHR, textStatus, errorThrown) {
+
+                console.error("API Error:", {
+                    endpoint: endpoint,
+                    method: method,
+                    httpStatus: jqXHR.status,
+                    textStatus: textStatus,
+                    errorThrown: errorThrown,
+                    response: jqXHR.responseText
+                });
+
+                let data = jqXHR.responseJSON;
+
+                // If response is not JSON
+                if (!data) {
+                    data = jqXHR.responseText;
+                }
+
+                resolve({
+                    success: false,
+                    httpStatus: jqXHR.status || 0,
+
+                    status:
+                        (
+                            typeof data === "object" &&
+                            data !== null &&
+                            data.status !== undefined
+                        )
+                            ? data.status
+                            : (jqXHR.status || 0),
+
+                    body: null,
+
+                    message:
+                        (
+                            typeof data === "object" &&
+                            data !== null &&
+                            (data.message || data.error)
+                        )
+                            ? (data.message || data.error)
+                            : `Server returned HTTP ${jqXHR.status || 0}`
+                });
+            });
+    });
 }
-
 // ============================================================
 // MEDICINE CATEGORY - GET ALL
 // ============================================================
 
 async function loadDashboardCategories() {
+
     try {
-        const response = await apiFetch("/v1/medicine-categories", "GET");
 
-        console.log("Dashboard Categories API Response:", response);
+        const response = await apiFetch(
+            "/v1/medicine-categories",
+            "GET"
+        );
 
-        if (!response || !response.success) {
-            console.error("Failed to load medicine categories:", response?.message);
-            showToast(response?.message || "Cannot load medicine categories.", "danger");
+
+        console.log(
+            "Dashboard Categories API Response:",
+            response
+        );
+
+
+        if (!response) {
+
+            showToast(
+                "Cannot load medicine categories.",
+                "danger"
+            );
+
             return [];
         }
 
-        let categories = response.body;
 
-        if (!Array.isArray(categories)) {
-            if (categories && Array.isArray(categories.content)) {
-                categories = categories.content;
-            } else {
-                categories = [];
-            }
+        /*
+         * CommonResponse:
+         *
+         * {
+         *     status: 0,
+         *     body: [...],
+         *     message: "Operation successful"
+         * }
+         */
+
+        if (response.status !== 0) {
+
+            console.error(
+                "Category API error:",
+                response.message
+            );
+
+
+            showToast(
+                response.message ||
+                "Cannot load medicine categories.",
+                "danger"
+            );
+
+
+            return [];
         }
 
-        console.log("Categories from Backend:", categories);
+
+        let categories = response.body;
+
+
+        /*
+         * Safety check.
+         *
+         * If backend returns:
+         *
+         * body: [...]
+         *
+         * use it directly.
+         *
+         * If backend later returns:
+         *
+         * body: {
+         *     content: [...]
+         * }
+         *
+         * handle that too.
+         */
+
+        if (!Array.isArray(categories)) {
+
+            if (
+                categories &&
+                Array.isArray(categories.content)
+            ) {
+
+                categories = categories.content;
+
+            } else {
+
+                categories = [];
+
+            }
+
+        }
+
+
+        console.log(
+            "Categories from Backend:",
+            categories
+        );
+
+
         return categories;
 
+
     } catch (error) {
-        console.error("Error loading dashboard categories:", error);
-        showToast("Error loading medicine categories.", "danger");
+
+        console.error(
+            "Error loading dashboard categories:",
+            error
+        );
+
+
+        showToast(
+            "Error loading medicine categories.",
+            "danger"
+        );
+
+
         return [];
+
     }
+
 }
+
 
 // ============================================================
 // RENDER MEDICINE CATEGORY TABLE
 // ============================================================
 
 function renderCategoryTable(categories) {
-    const head = document.getElementById("workspace-table-head");
-    const body = document.getElementById("workspace-table-body");
-    const panelTitle = document.getElementById("table-panel-title");
 
-    if (!head || !body) {
-        console.error("Category table elements not found.");
+    const $head =
+        $("#workspace-table-head");
+
+    const $body =
+        $("#workspace-table-body");
+
+    const $panelTitle =
+        $("#table-panel-title");
+
+
+    if (
+        $head.length === 0 ||
+        $body.length === 0
+    ) {
+
+        console.error(
+            "Category table elements not found."
+        );
+
         return;
+
     }
 
-    if (panelTitle) {
-        panelTitle.textContent = "Medicine Category Definitions";
+
+    // --------------------------------------------------------
+    // PANEL TITLE
+    // --------------------------------------------------------
+
+    if ($panelTitle.length > 0) {
+
+        $panelTitle.text(
+            "Medicine Category Definitions"
+        );
+
     }
 
-    head.innerHTML = `
+
+    // --------------------------------------------------------
+    // TABLE HEADER
+    // --------------------------------------------------------
+
+    $head.html(`
+
         <tr>
-            <th style="width: 80px;">ID</th>
-            <th>Category Name</th>
-            <th>Description</th>
-            <th style="width: 170px; text-align: right;">Actions</th>
+
+            <th style="width: 80px;">
+                ID
+            </th>
+
+            <th>
+                Category Name
+            </th>
+
+            <th>
+                Description
+            </th>
+
+            <th style="
+                width: 170px;
+                text-align: right;
+            ">
+                Actions
+            </th>
+
         </tr>
-    `;
 
-    body.innerHTML = "";
+    `);
 
-    if (!Array.isArray(categories) || categories.length === 0) {
-        body.innerHTML = `
+
+    // --------------------------------------------------------
+    // CLEAR OLD DATA
+    // --------------------------------------------------------
+
+    $body.empty();
+
+
+    // --------------------------------------------------------
+    // EMPTY STATE
+    // --------------------------------------------------------
+
+    if (
+        !Array.isArray(categories) ||
+        categories.length === 0
+    ) {
+
+        $body.html(`
+
             <tr>
-                <td colspan="4" style="text-align:center; padding: 2.5rem; color:var(--text-muted);">
-                    <div style="margin-bottom: 0.5rem; font-size: 1.1rem; font-weight: 500;">No categories found</div>
-                    <div style="font-size: 0.85rem;">Click "Add Category" above to create your first therapeutic classification.</div>
+
+                <td
+                    colspan="4"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+
+                    <div style="
+                        margin-bottom:0.5rem;
+                        font-size:1.1rem;
+                        font-weight:500;
+                    ">
+                        No categories found
+                    </div>
+
+                    <div style="
+                        font-size:0.85rem;
+                    ">
+                        Click "Add Category" above to create
+                        your first therapeutic classification.
+                    </div>
+
                 </td>
+
             </tr>
-        `;
+
+        `);
+
         return;
+
     }
 
-    categories.forEach(category => {
-        const row = document.createElement("tr");
 
-        const catName = category.name || "";
-        const catDesc = category.description || "";
-        const safeName = escapeHtml(catName);
-        const safeDesc = escapeHtml(catDesc);
-        // For inline JS string attribute, escape single quotes and backslashes
-        const jsName = catName.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-        const jsDesc = catDesc.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    // --------------------------------------------------------
+    // RENDER EACH CATEGORY
+    // --------------------------------------------------------
 
-        row.innerHTML = `
-            <td>#${category.id}</td>
-            <td><strong>${safeName}</strong></td>
-            <td style="color: var(--text-secondary);">${safeDesc || "<em>No description provided</em>"}</td>
-            <td style="text-align: right;">
-                <button
-                    class="btn btn-secondary"
-                    style="padding:0.3rem 0.65rem; font-size:0.75rem; margin-right: 6px;"
-                    onclick="editCategory(${category.id}, '${jsName}', '${jsDesc}')">
-                    Edit
-                </button>
-                <button
-                    class="btn btn-secondary"
-                    style="padding:0.3rem 0.65rem; font-size:0.75rem; color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.3);"
-                    onclick="deleteCategory(${category.id})">
-                    Delete
-                </button>
-            </td>
-        `;
+    $.each(
+        categories,
+        function (index, category) {
 
-        body.appendChild(row);
-    });
+
+            const id =
+                category.id;
+
+
+            const name =
+                category.name || "";
+
+
+            const description =
+                category.description || "";
+
+
+            const safeName =
+                escapeHtml(name);
+
+
+            const safeDescription =
+                escapeHtml(description);
+
+
+            /*
+             * Instead of putting category name/description
+             * directly into inline JavaScript, store them
+             * in data attributes.
+             *
+             * This avoids:
+             *
+             * openCategoryModal is not defined
+             * quote escaping problems
+             * apostrophe problems
+             */
+
+            const $row = $("<tr>");
+
+
+            // ------------------------------------------------
+            // ID
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    #${id}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // NAME
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    <strong>
+                        ${safeName}
+                    </strong>
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // DESCRIPTION
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td style="
+                    color:var(--text-secondary);
+                ">
+
+                    ${
+                safeDescription ||
+                "<em>No description provided</em>"
+            }
+
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // ACTIONS
+            // ------------------------------------------------
+
+            const $actions =
+                $("<td>")
+                    .css({
+                        "text-align": "right"
+                    });
+
+
+            // ------------------------------------------------
+            // EDIT BUTTON
+            // ------------------------------------------------
+
+            const $editButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Edit"
+
+                });
+
+
+            $editButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                marginRight: "6px"
+
+            });
+
+
+            /*
+             * jQuery click event.
+             *
+             * No inline onclick.
+             */
+
+            $editButton.on(
+                "click",
+                function () {
+
+                    editCategory(
+                        id,
+                        name,
+                        description
+                    );
+
+                }
+            );
+
+
+            // ------------------------------------------------
+            // DELETE BUTTON
+            // ------------------------------------------------
+
+            const $deleteButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Delete"
+
+                });
+
+
+            $deleteButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                color: "var(--accent-rose)",
+
+                borderColor:
+                    "rgba(244, 63, 94, 0.3)"
+
+            });
+
+
+            $deleteButton.on(
+                "click",
+                function () {
+
+                    deleteCategory(id);
+
+                }
+            );
+
+
+            // ------------------------------------------------
+            // ADD BUTTONS
+            // ------------------------------------------------
+
+            $actions
+                .append($editButton)
+                .append($deleteButton);
+
+
+            $row.append($actions);
+
+
+            // ------------------------------------------------
+            // ADD ROW TO TABLE
+            // ------------------------------------------------
+
+            $body.append($row);
+
+        }
+    );
+
 }
+
 
 // ============================================================
 // CATEGORY STATISTICS
 // ============================================================
 
 function renderCategoryStats(categories) {
-    const statsContainer = document.getElementById("workspace-stats");
-    if (!statsContainer) return;
 
-    const total = Array.isArray(categories) ? categories.length : 0;
+    const $statsContainer =
+        $("#workspace-stats");
 
-    statsContainer.innerHTML = `
+
+    if ($statsContainer.length === 0) {
+
+        return;
+
+    }
+
+
+    const total =
+        Array.isArray(categories)
+            ? categories.length
+            : 0;
+
+
+    $statsContainer.html(`
+
         <div class="glass-card stat-card animate-fade">
+
             <div class="stat-header">
-                <span class="stat-title">Total Categories</span>
+
+                <span class="stat-title">
+                    Total Categories
+                </span>
+
+
                 <div class="stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                        />
+
                     </svg>
+
                 </div>
+
             </div>
-            <div class="stat-val">${total}</div>
-            <span class="stat-desc">Therapeutic classifications loaded from database</span>
+
+
+            <div class="stat-val">
+                ${total}
+            </div>
+
+
+            <span class="stat-desc">
+                Therapeutic classifications loaded
+                from database
+            </span>
+
         </div>
-    `;
+
+    `);
+
 }
+
 
 // ============================================================
 // MODAL CONTROLS
 // ============================================================
 
 function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = "flex";
-    }
-}
 
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = "none";
-    }
-}
+    const $modal =
+        $("#" + modalId);
 
-function openCategoryModal(id = null, name = "", description = "") {
-    const title = document.getElementById("category-modal-title");
-    const idInput = document.getElementById("category-edit-id");
-    const nameInput = document.getElementById("category-name");
-    const descInput = document.getElementById("category-desc");
 
-    if (id) {
-        if (title) title.textContent = "Edit Medicine Category";
-        if (idInput) idInput.value = id;
-        if (nameInput) nameInput.value = name;
-        if (descInput) descInput.value = description;
-    } else {
-        if (title) title.textContent = "Create Medicine Category";
-        if (idInput) idInput.value = "";
-        if (nameInput) nameInput.value = "";
-        if (descInput) descInput.value = "";
+    if ($modal.length === 0) {
+
+        console.error(
+            "Modal not found:",
+            modalId
+        );
+
+        return;
+
     }
 
-    openModal("category-modal");
+
+    $modal.css(
+        "display",
+        "flex"
+    );
+
 }
 
-function editCategory(id, name, description) {
-    openCategoryModal(id, name, description);
-}
 
 // ============================================================
-// CATEGORY CRUD OPERATIONS
+// CLOSE MODAL
+// ============================================================
+
+function closeModal(modalId) {
+
+    const $modal =
+        $("#" + modalId);
+
+
+    if ($modal.length === 0) {
+
+        return;
+
+    }
+
+
+    $modal.css(
+        "display",
+        "none"
+    );
+
+}
+
+
+// ============================================================
+// OPEN CATEGORY MODAL
+// ============================================================
+
+function openCategoryModal(
+    id = null,
+    name = "",
+    description = ""
+) {
+
+    const $title =
+        $("#category-modal-title");
+
+
+    const $idInput =
+        $("#category-edit-id");
+
+
+    const $nameInput =
+        $("#category-name");
+
+
+    const $descInput =
+        $("#category-desc");
+
+
+    if (
+        $title.length === 0 ||
+        $idInput.length === 0 ||
+        $nameInput.length === 0 ||
+        $descInput.length === 0
+    ) {
+
+        console.error(
+            "Category modal elements not found."
+        );
+
+        return;
+
+    }
+
+
+    // --------------------------------------------------------
+    // EDIT
+    // --------------------------------------------------------
+
+    if (
+        id !== null &&
+        id !== undefined &&
+        id !== ""
+    ) {
+
+        $title.text(
+            "Edit Medicine Category"
+        );
+
+
+        $idInput.val(id);
+
+
+        $nameInput.val(name);
+
+
+        $descInput.val(description);
+
+    }
+
+
+        // --------------------------------------------------------
+        // CREATE
+    // --------------------------------------------------------
+
+    else {
+
+        $title.text(
+            "Create Medicine Category"
+        );
+
+
+        $idInput.val("");
+
+
+        $nameInput.val("");
+
+
+        $descInput.val("");
+
+    }
+
+
+    openModal(
+        "category-modal"
+    );
+
+}
+
+
+// ============================================================
+// EDIT CATEGORY
+// ============================================================
+
+function editCategory(
+    id,
+    name,
+    description
+) {
+
+    console.log(
+        "Edit Category:",
+        {
+            id: id,
+            name: name,
+            description: description
+        }
+    );
+
+
+    openCategoryModal(
+        id,
+        name,
+        description
+    );
+
+}
+
+
+// ============================================================
+// SAVE CATEGORY
+// CREATE + UPDATE
 // ============================================================
 
 async function saveCategory() {
-    const idInput = document.getElementById("category-edit-id");
-    const nameInput = document.getElementById("category-name");
-    const descInput = document.getElementById("category-desc");
 
-    if (!nameInput) return;
+    const $idInput =
+        $("#category-edit-id");
 
-    const name = nameInput.value.trim();
-    const description = descInput ? descInput.value.trim() : "";
+
+    const $nameInput =
+        $("#category-name");
+
+
+    const $descInput =
+        $("#category-desc");
+
+
+    if ($nameInput.length === 0) {
+
+        console.error(
+            "Category name input not found."
+        );
+
+        return;
+
+    }
+
+
+    // --------------------------------------------------------
+    // GET FORM VALUES
+    // --------------------------------------------------------
+
+    const name =
+        $.trim(
+            $nameInput.val() || ""
+        );
+
+
+    const description =
+        $descInput.length > 0
+            ? $.trim(
+                $descInput.val() || ""
+            )
+            : "";
+
+
+    // --------------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------------
 
     if (!name) {
-        showToast("Category name is required.", "warning");
-        nameInput.focus();
+
+        showToast(
+            "Category name is required.",
+            "warning"
+        );
+
+
+        $nameInput.trigger(
+            "focus"
+        );
+
+
         return;
+
     }
 
-    const editId = idInput ? idInput.value.trim() : "";
-    const isEdit = Boolean(editId);
+
+    // --------------------------------------------------------
+    // GET EDIT ID
+    // --------------------------------------------------------
+
+    const editId =
+        $idInput.length > 0
+            ? $.trim(
+                $idInput.val() || ""
+            )
+            : "";
+
+
+    const isEdit =
+        editId !== "";
+
+
+    // --------------------------------------------------------
+    // REQUEST PAYLOAD
+    // --------------------------------------------------------
 
     const payload = {
+
         name: name,
+
         description: description
+
     };
 
-    const endpoint = isEdit ? `/v1/medicine-categories/${editId}` : "/v1/medicine-categories";
-    const method = isEdit ? "PUT" : "POST";
 
-    showToast(isEdit ? "Updating category..." : "Creating category...", "info");
+    // --------------------------------------------------------
+    // ENDPOINT
+    // --------------------------------------------------------
+
+    const endpoint =
+        isEdit
+            ? `/v1/medicine-categories/${editId}`
+            : "/v1/medicine-categories";
+
+
+    const method =
+        isEdit
+            ? "PUT"
+            : "POST";
+
+
+    console.log(
+        "Saving Category:",
+        {
+            method: method,
+            endpoint: endpoint,
+            payload: payload
+        }
+    );
+
+
+    showToast(
+        isEdit
+            ? "Updating category..."
+            : "Creating category...",
+        "info"
+    );
+
+
+    // --------------------------------------------------------
+    // AJAX REQUEST
+    // --------------------------------------------------------
 
     try {
-        const response = await apiFetch(endpoint, method, payload);
 
-        if (!response || !response.success) {
-            showToast(response?.message || "Failed to save category.", "danger");
+        const response =
+            await apiFetch(
+                endpoint,
+                method,
+                payload
+            );
+
+
+        console.log(
+            "Save Category Response:",
+            response
+        );
+
+
+        // ----------------------------------------------------
+        // BACKEND COMMON RESPONSE
+        // ----------------------------------------------------
+
+        if (
+            !response ||
+            response.status !== 0
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to save category.",
+                "danger"
+            );
+
+
             return;
+
         }
 
-        showToast(isEdit ? "Category updated successfully!" : "Category created successfully!", "success");
-        closeModal("category-modal");
 
-        // Reload data to reflect changes
-        const categories = await loadDashboardCategories();
-        renderCategoryTable(categories);
-        renderCategoryStats(categories);
+        // ----------------------------------------------------
+        // SUCCESS
+        // ----------------------------------------------------
+
+        showToast(
+            isEdit
+                ? "Category updated successfully!"
+                : "Category created successfully!",
+            "success"
+        );
+
+
+        // ----------------------------------------------------
+        // CLOSE MODAL
+        // ----------------------------------------------------
+
+        closeModal(
+            "category-modal"
+        );
+
+
+        // ----------------------------------------------------
+        // RELOAD BACKEND DATA
+        // ----------------------------------------------------
+
+        const categories =
+            await loadDashboardCategories();
+
+
+        renderCategoryTable(
+            categories
+        );
+
+
+        renderCategoryStats(
+            categories
+        );
+
 
     } catch (error) {
-        console.error("Error saving category:", error);
-        showToast("Error saving category.", "danger");
+
+        console.error(
+            "Error saving category:",
+            error
+        );
+
+
+        /*
+         * jQuery AJAX error response
+         */
+
+        let message =
+            "Error saving category.";
+
+
+        if (
+            error &&
+            error.responseJSON &&
+            error.responseJSON.message
+        ) {
+
+            message =
+                error.responseJSON.message;
+
+        }
+
+
+        showToast(
+            message,
+            "danger"
+        );
+
     }
+
 }
+
+
+// ============================================================
+// DELETE CATEGORY
+// ============================================================
 
 async function deleteCategory(id) {
-    if (!confirm(`Are you sure you want to delete category #${id}?`)) {
+
+    if (
+        id === null ||
+        id === undefined ||
+        id === ""
+    ) {
+
+        console.error(
+            "Category ID is missing."
+        );
+
         return;
+
     }
 
-    showToast("Deleting category...", "info");
+
+    const confirmed =
+        confirm(
+            `Are you sure you want to delete category #${id}?`
+        );
+
+
+    if (!confirmed) {
+
+        return;
+
+    }
+
+
+    showToast(
+        "Deleting category...",
+        "info"
+    );
+
 
     try {
-        const response = await apiFetch(`/v1/medicine-categories/${id}`, "DELETE");
 
-        if (!response || !response.success) {
-            showToast(response?.message || "Failed to delete category.", "danger");
+        const response =
+            await apiFetch(
+                `/v1/medicine-categories/${id}`,
+                "DELETE"
+            );
+
+
+        console.log(
+            "Delete Category Response:",
+            response
+        );
+
+
+        // ----------------------------------------------------
+        // CHECK BACKEND RESPONSE
+        // ----------------------------------------------------
+
+        if (
+            !response ||
+            response.status !== 0
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete category.",
+                "danger"
+            );
+
+
             return;
+
         }
 
-        showToast("Category deleted successfully!", "success");
 
-        // Reload data
-        const categories = await loadDashboardCategories();
-        renderCategoryTable(categories);
-        renderCategoryStats(categories);
+        // ----------------------------------------------------
+        // SUCCESS
+        // ----------------------------------------------------
+
+        showToast(
+            "Category deleted successfully!",
+            "success"
+        );
+
+
+        // ----------------------------------------------------
+        // RELOAD DATABASE DATA
+        // ----------------------------------------------------
+
+        const categories =
+            await loadDashboardCategories();
+
+
+        renderCategoryTable(
+            categories
+        );
+
+
+        renderCategoryStats(
+            categories
+        );
+
 
     } catch (error) {
-        console.error("Error deleting category:", error);
-        showToast("Error deleting category.", "danger");
+
+        console.error(
+            "Error deleting category:",
+            error
+        );
+
+
+        let message =
+            "Error deleting category.";
+
+
+        if (
+            error &&
+            error.responseJSON &&
+            error.responseJSON.message
+        ) {
+
+            message =
+                error.responseJSON.message;
+
+        }
+
+
+        showToast(
+            message,
+            "danger"
+        );
+
     }
+
 }
-
-
 // ============================================================
 // MEDICINE - GET ALL
 // ============================================================
@@ -499,37 +1438,49 @@ async function loadDashboardMedicines() {
 
 function renderMedicineTable(medicines, categories = []) {
 
-    const head =
-        document.getElementById(
-            "workspace-table-head"
-        );
+    const $head =
+        $("#workspace-table-head");
 
-    const body =
-        document.getElementById(
-            "workspace-table-body"
-        );
+    const $body =
+        $("#workspace-table-body");
 
-    const panelTitle =
-        document.getElementById(
-            "table-panel-title"
-        );
+    const $panelTitle =
+        $("#table-panel-title");
 
-    if (!head || !body) {
+
+    if (
+        $head.length === 0 ||
+        $body.length === 0
+    ) {
 
         console.error(
             "Medicine table elements not found."
         );
 
         return;
+
     }
 
-    if (panelTitle) {
 
-        panelTitle.textContent =
-            "Medicine Catalog";
+    // --------------------------------------------------------
+    // PANEL TITLE
+    // --------------------------------------------------------
+
+    if ($panelTitle.length > 0) {
+
+        $panelTitle.text(
+            "Medicine Catalog"
+        );
+
     }
 
-    head.innerHTML = `
+
+    // --------------------------------------------------------
+    // TABLE HEADER
+    // --------------------------------------------------------
+
+    $head.html(`
+
         <tr>
             <th style="width:60px;">ID</th>
             <th>Medicine Name</th>
@@ -544,16 +1495,28 @@ function renderMedicineTable(medicines, categories = []) {
                 Actions
             </th>
         </tr>
-    `;
 
-    body.innerHTML = "";
+    `);
+
+
+    // --------------------------------------------------------
+    // CLEAR OLD DATA
+    // --------------------------------------------------------
+
+    $body.empty();
+
+
+    // --------------------------------------------------------
+    // EMPTY STATE
+    // --------------------------------------------------------
 
     if (
         !Array.isArray(medicines) ||
         medicines.length === 0
     ) {
 
-        body.innerHTML = `
+        $body.html(`
+
             <tr>
                 <td
                     colspan="10"
@@ -581,138 +1544,302 @@ function renderMedicineTable(medicines, categories = []) {
                     </div>
                 </td>
             </tr>
-        `;
+
+        `);
 
         return;
+
     }
 
-    medicines.forEach(medicine => {
 
-        const row =
-            document.createElement("tr");
+    // --------------------------------------------------------
+    // RENDER EACH MEDICINE
+    // --------------------------------------------------------
 
-        const category =
-            categories.find(
-                category =>
-                    Number(category.id) ===
-                    Number(medicine.categoryId)
+    $.each(
+        medicines,
+        function (index, medicine) {
+
+            const category =
+                categories.find(
+                    category =>
+                        Number(category.id) ===
+                        Number(medicine.categoryId)
+                );
+
+            const categoryName =
+                category
+                    ? category.name
+                    : "Unknown";
+
+            const prescription =
+                medicine.prescriptionRequired
+                    ? "Required"
+                    : "Not Required";
+
+            const status =
+                medicine.active
+                    ? "Active"
+                    : "Inactive";
+
+
+            const $row = $("<tr>");
+
+
+            // ------------------------------------------------
+            // ID
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    #${escapeHtml(medicine.id)}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // NAME
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    <strong>
+                        ${escapeHtml(medicine.name)}
+                    </strong>
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // GENERIC NAME
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    ${escapeHtml(medicine.genericName || "")}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // BRAND
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    ${escapeHtml(medicine.brandName || "")}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // FORM
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    ${escapeHtml(medicine.dosageForm || "")}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // STRENGTH
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    ${escapeHtml(medicine.strength || "")}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // CATEGORY
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    ${escapeHtml(categoryName)}
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // PRESCRIPTION
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    <span
+                        class="badge ${
+                medicine.prescriptionRequired
+                    ? "badge-danger"
+                    : "badge-success"
+            }"
+                    >
+                        ${prescription}
+                    </span>
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // STATUS
+            // ------------------------------------------------
+
+            $row.append(`
+
+                <td>
+                    <span
+                        class="badge ${
+                medicine.active
+                    ? "badge-success"
+                    : "badge-danger"
+            }"
+                    >
+                        ${status}
+                    </span>
+                </td>
+
+            `);
+
+
+            // ------------------------------------------------
+            // ACTIONS
+            // ------------------------------------------------
+
+            const $actions =
+                $("<td>")
+                    .css({
+                        "text-align": "right"
+                    });
+
+
+            // ------------------------------------------------
+            // EDIT BUTTON
+            // ------------------------------------------------
+
+            const $editButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Edit"
+
+                });
+
+
+            $editButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                marginRight: "6px"
+
+            });
+
+
+            /*
+             * jQuery click event.
+             *
+             * No inline onclick.
+             */
+
+            $editButton.on(
+                "click",
+                function () {
+
+                    editMedicine(
+                        medicine.id
+                    );
+
+                }
             );
 
-        const categoryName =
-            category
-                ? category.name
-                : "Unknown";
 
-        const prescription =
-            medicine.prescriptionRequired
-                ? "Required"
-                : "Not Required";
+            // ------------------------------------------------
+            // DELETE BUTTON
+            // ------------------------------------------------
 
-        const status =
-            medicine.active
-                ? "Active"
-                : "Inactive";
+            const $deleteButton =
+                $("<button>", {
 
-        row.innerHTML = `
-            <td>
-                #${escapeHtml(medicine.id)}
-            </td>
+                    type: "button",
 
-            <td>
-                <strong>
-                    ${escapeHtml(medicine.name)}
-                </strong>
-            </td>
+                    class: "btn btn-secondary",
 
-            <td>
-                ${escapeHtml(
-            medicine.genericName || ""
-        )}
-            </td>
+                    text: "Delete"
 
-            <td>
-                ${escapeHtml(
-            medicine.brandName || ""
-        )}
-            </td>
+                });
 
-            <td>
-                ${escapeHtml(
-            medicine.dosageForm || ""
-        )}
-            </td>
 
-            <td>
-                ${escapeHtml(
-            medicine.strength || ""
-        )}
-            </td>
+            $deleteButton.css({
 
-            <td>
-                ${escapeHtml(categoryName)}
-            </td>
+                padding: "0.3rem 0.65rem",
 
-            <td>
-                <span
-                    class="badge ${
-            medicine.prescriptionRequired
-                ? "badge-danger"
-                : "badge-success"
-        }"
-                >
-                    ${prescription}
-                </span>
-            </td>
+                fontSize: "0.75rem",
 
-            <td>
-                <span
-                    class="badge ${
-            medicine.active
-                ? "badge-success"
-                : "badge-danger"
-        }"
-                >
-                    ${status}
-                </span>
-            </td>
+                color: "var(--accent-rose)",
 
-            <td style="text-align:right;">
+                borderColor:
+                    "rgba(244, 63, 94, 0.3)"
 
-                <button
-                    class="btn btn-secondary"
-                    style="
-                        padding:0.3rem 0.65rem;
-                        font-size:0.75rem;
-                        margin-right:6px;
-                    "
-                    onclick="
-                        editMedicine(${medicine.id})
-                    "
-                >
-                    Edit
-                </button>
+            });
 
-                <button
-                    class="btn btn-secondary"
-                    style="
-                        padding:0.3rem 0.65rem;
-                        font-size:0.75rem;
-                        color:var(--accent-rose);
-                        border-color:
-                        rgba(244,63,94,0.3);
-                    "
-                    onclick="
-                        deleteMedicine(${medicine.id})
-                    "
-                >
-                    Delete
-                </button>
 
-            </td>
-        `;
+            $deleteButton.on(
+                "click",
+                function () {
 
-        body.appendChild(row);
-    });
+                    deleteMedicine(
+                        medicine.id
+                    );
+
+                }
+            );
+
+
+            // ------------------------------------------------
+            // ADD BUTTONS
+            // ------------------------------------------------
+
+            $actions
+                .append($editButton)
+                .append($deleteButton);
+
+
+            $row.append($actions);
+
+
+            // ------------------------------------------------
+            // ADD ROW TO TABLE
+            // ------------------------------------------------
+
+            $body.append($row);
+
+        }
+    );
+
 }
 
 // ============================================================
@@ -721,14 +1848,16 @@ function renderMedicineTable(medicines, categories = []) {
 
 function renderMedicineStats(medicines) {
 
-    const statsContainer =
-        document.getElementById(
-            "workspace-stats"
-        );
+    const $statsContainer =
+        $("#workspace-stats");
 
-    if (!statsContainer) {
+
+    if ($statsContainer.length === 0) {
+
         return;
+
     }
+
 
     const list =
         Array.isArray(medicines)
@@ -749,7 +1878,7 @@ function renderMedicineStats(medicines) {
                 medicine.prescriptionRequired === true
         ).length;
 
-    statsContainer.innerHTML = `
+    $statsContainer.html(`
 
         <div class="glass-card stat-card animate-fade">
 
@@ -824,44 +1953,43 @@ function renderMedicineStats(medicines) {
             </span>
 
         </div>
-    `;
+    `);
 }
+
 async function openMedicineModal(medicine = null) {
 
-    const title =
-        document.getElementById("medicine-modal-title");
+    const $title =
+        $("#medicine-modal-title");
 
-    const idInput =
-        document.getElementById("medicine-edit-id");
+    const $idInput =
+        $("#medicine-edit-id");
 
-    const nameInput =
-        document.getElementById("medicine-name");
+    const $nameInput =
+        $("#medicine-name");
 
-    const genericInput =
-        document.getElementById("medicine-generic-name");
+    const $genericInput =
+        $("#medicine-generic-name");
 
-    const brandInput =
-        document.getElementById("medicine-brand-name");
+    const $brandInput =
+        $("#medicine-brand-name");
 
-    const dosageInput =
-        document.getElementById("medicine-dosage-form");
+    const $dosageInput =
+        $("#medicine-dosage-form");
 
-    const strengthInput =
-        document.getElementById("medicine-strength");
+    const $strengthInput =
+        $("#medicine-strength");
 
-    const categoryInput =
-        document.getElementById("medicine-category-id");
+    const $categoryInput =
+        $("#medicine-category-id");
 
-    const descriptionInput =
-        document.getElementById("medicine-description");
+    const $descriptionInput =
+        $("#medicine-description");
 
-    const prescriptionInput =
-        document.getElementById(
-            "medicine-prescription-required"
-        );
+    const $prescriptionInput =
+        $("#medicine-prescription-required");
 
-    const activeInput =
-        document.getElementById("medicine-active");
+    const $activeInput =
+        $("#medicine-active");
 
 
     // ---------------------------------------------------------
@@ -869,17 +1997,17 @@ async function openMedicineModal(medicine = null) {
     // ---------------------------------------------------------
 
     if (
-        !title ||
-        !idInput ||
-        !nameInput ||
-        !genericInput ||
-        !brandInput ||
-        !dosageInput ||
-        !strengthInput ||
-        !categoryInput ||
-        !descriptionInput ||
-        !prescriptionInput ||
-        !activeInput
+        $title.length === 0 ||
+        $idInput.length === 0 ||
+        $nameInput.length === 0 ||
+        $genericInput.length === 0 ||
+        $brandInput.length === 0 ||
+        $dosageInput.length === 0 ||
+        $strengthInput.length === 0 ||
+        $categoryInput.length === 0 ||
+        $descriptionInput.length === 0 ||
+        $prescriptionInput.length === 0 ||
+        $activeInput.length === 0
     ) {
 
         console.error(
@@ -903,27 +2031,26 @@ async function openMedicineModal(medicine = null) {
         await loadDashboardCategories();
 
 
-    categoryInput.innerHTML = `
+    $categoryInput.html(`
         <option value="">
             Select category
         </option>
-    `;
+    `);
 
 
-    categories.forEach(category => {
+    $.each(
+        categories,
+        function (index, category) {
 
-        const option =
-            document.createElement("option");
+            $categoryInput.append(
+                $("<option>", {
+                    value: category.id,
+                    text: category.name
+                })
+            );
 
-        option.value =
-            category.id;
-
-        option.textContent =
-            category.name;
-
-        categoryInput.appendChild(option);
-
-    });
+        }
+    );
 
 
     // ---------------------------------------------------------
@@ -932,28 +2059,29 @@ async function openMedicineModal(medicine = null) {
 
     if (!medicine) {
 
-        title.textContent =
-            "Create Medicine";
+        $title.text(
+            "Create Medicine"
+        );
 
-        idInput.value = "";
+        $idInput.val("");
 
-        nameInput.value = "";
+        $nameInput.val("");
 
-        genericInput.value = "";
+        $genericInput.val("");
 
-        brandInput.value = "";
+        $brandInput.val("");
 
-        dosageInput.value = "";
+        $dosageInput.val("");
 
-        strengthInput.value = "";
+        $strengthInput.val("");
 
-        categoryInput.value = "";
+        $categoryInput.val("");
 
-        descriptionInput.value = "";
+        $descriptionInput.val("");
 
-        prescriptionInput.value = "false";
+        $prescriptionInput.val("false");
 
-        activeInput.value = "true";
+        $activeInput.val("true");
 
 
         openModal("medicine-modal");
@@ -966,42 +2094,53 @@ async function openMedicineModal(medicine = null) {
     // EDIT
     // ---------------------------------------------------------
 
-    title.textContent =
-        "Edit Medicine";
+    $title.text(
+        "Edit Medicine"
+    );
 
-    idInput.value =
-        medicine.id ?? "";
+    $idInput.val(
+        medicine.id ?? ""
+    );
 
-    nameInput.value =
-        medicine.name ?? "";
+    $nameInput.val(
+        medicine.name ?? ""
+    );
 
-    genericInput.value =
-        medicine.genericName ?? "";
+    $genericInput.val(
+        medicine.genericName ?? ""
+    );
 
-    brandInput.value =
-        medicine.brandName ?? "";
+    $brandInput.val(
+        medicine.brandName ?? ""
+    );
 
-    dosageInput.value =
-        medicine.dosageForm ?? "";
+    $dosageInput.val(
+        medicine.dosageForm ?? ""
+    );
 
-    strengthInput.value =
-        medicine.strength ?? "";
+    $strengthInput.val(
+        medicine.strength ?? ""
+    );
 
-    categoryInput.value =
-        medicine.categoryId ?? "";
+    $categoryInput.val(
+        medicine.categoryId ?? ""
+    );
 
-    descriptionInput.value =
-        medicine.description ?? "";
+    $descriptionInput.val(
+        medicine.description ?? ""
+    );
 
-    prescriptionInput.value =
+    $prescriptionInput.val(
         String(
             medicine.prescriptionRequired ?? false
-        );
+        )
+    );
 
-    activeInput.value =
+    $activeInput.val(
         String(
             medicine.active ?? true
-        );
+        )
+    );
 
 
     openModal("medicine-modal");
@@ -1086,55 +2225,35 @@ async function saveMedicine() {
     // Get form elements
     // ---------------------------------------------------------
 
-    const idInput =
-        document.getElementById(
-            "medicine-edit-id"
-        );
+    const $idInput =
+        $("#medicine-edit-id");
 
-    const nameInput =
-        document.getElementById(
-            "medicine-name"
-        );
+    const $nameInput =
+        $("#medicine-name");
 
-    const genericInput =
-        document.getElementById(
-            "medicine-generic-name"
-        );
+    const $genericInput =
+        $("#medicine-generic-name");
 
-    const brandInput =
-        document.getElementById(
-            "medicine-brand-name"
-        );
+    const $brandInput =
+        $("#medicine-brand-name");
 
-    const dosageInput =
-        document.getElementById(
-            "medicine-dosage-form"
-        );
+    const $dosageInput =
+        $("#medicine-dosage-form");
 
-    const strengthInput =
-        document.getElementById(
-            "medicine-strength"
-        );
+    const $strengthInput =
+        $("#medicine-strength");
 
-    const categoryInput =
-        document.getElementById(
-            "medicine-category-id"
-        );
+    const $categoryInput =
+        $("#medicine-category-id");
 
-    const descriptionInput =
-        document.getElementById(
-            "medicine-description"
-        );
+    const $descriptionInput =
+        $("#medicine-description");
 
-    const prescriptionInput =
-        document.getElementById(
-            "medicine-prescription-required"
-        );
+    const $prescriptionInput =
+        $("#medicine-prescription-required");
 
-    const activeInput =
-        document.getElementById(
-            "medicine-active"
-        );
+    const $activeInput =
+        $("#medicine-active");
 
 
     // ---------------------------------------------------------
@@ -1142,15 +2261,15 @@ async function saveMedicine() {
     // ---------------------------------------------------------
 
     if (
-        !nameInput ||
-        !genericInput ||
-        !brandInput ||
-        !dosageInput ||
-        !strengthInput ||
-        !categoryInput ||
-        !descriptionInput ||
-        !prescriptionInput ||
-        !activeInput
+        $nameInput.length === 0 ||
+        $genericInput.length === 0 ||
+        $brandInput.length === 0 ||
+        $dosageInput.length === 0 ||
+        $strengthInput.length === 0 ||
+        $categoryInput.length === 0 ||
+        $descriptionInput.length === 0 ||
+        $prescriptionInput.length === 0 ||
+        $activeInput.length === 0
     ) {
 
         console.error(
@@ -1171,32 +2290,32 @@ async function saveMedicine() {
     // ---------------------------------------------------------
 
     const name =
-        nameInput.value.trim();
+        ($nameInput.val() || "").trim();
 
     const genericName =
-        genericInput.value.trim();
+        ($genericInput.val() || "").trim();
 
     const brandName =
-        brandInput.value.trim();
+        ($brandInput.val() || "").trim();
 
     const dosageForm =
-        dosageInput.value.trim();
+        ($dosageInput.val() || "").trim();
 
     const strength =
-        strengthInput.value.trim();
+        ($strengthInput.val() || "").trim();
 
     const categoryId =
-        categoryInput.value.trim();
+        ($categoryInput.val() || "").trim();
 
     const description =
-        descriptionInput.value.trim();
+        ($descriptionInput.val() || "").trim();
 
 
     const prescriptionRequired =
-        prescriptionInput.value === "true";
+        $prescriptionInput.val() === "true";
 
     const active =
-        activeInput.value === "true";
+        $activeInput.val() === "true";
 
 
     // ---------------------------------------------------------
@@ -1210,7 +2329,7 @@ async function saveMedicine() {
             "warning"
         );
 
-        nameInput.focus();
+        $nameInput.focus();
 
         return;
     }
@@ -1223,7 +2342,7 @@ async function saveMedicine() {
             "warning"
         );
 
-        genericInput.focus();
+        $genericInput.focus();
 
         return;
     }
@@ -1236,7 +2355,7 @@ async function saveMedicine() {
             "warning"
         );
 
-        brandInput.focus();
+        $brandInput.focus();
 
         return;
     }
@@ -1249,7 +2368,7 @@ async function saveMedicine() {
             "warning"
         );
 
-        dosageInput.focus();
+        $dosageInput.focus();
 
         return;
     }
@@ -1262,7 +2381,7 @@ async function saveMedicine() {
             "warning"
         );
 
-        strengthInput.focus();
+        $strengthInput.focus();
 
         return;
     }
@@ -1275,7 +2394,7 @@ async function saveMedicine() {
             "warning"
         );
 
-        categoryInput.focus();
+        $categoryInput.focus();
 
         return;
     }
@@ -1286,8 +2405,8 @@ async function saveMedicine() {
     // ---------------------------------------------------------
 
     const editId =
-        idInput
-            ? idInput.value.trim()
+        $idInput.length > 0
+            ? ($idInput.val() || "").trim()
             : "";
 
     const isEdit =
@@ -4033,726 +5152,2217 @@ async function deleteReservation(id) {
         );
     }
 }
-
-// // ============================================================
-// // INVENTORY - GET ALL
-// // ============================================================
-//
-// async function loadDashboardInventory() {
-//
-//     try {
-//
-//         const response =
-//             await apiFetch("/v1/inventories", "GET");
-//
-//         console.log(
-//             "Dashboard Inventory API Response:",
-//             response
-//         );
-//
-//         if (!response || !response.success) {
-//
-//             showToast(
-//                 response?.message ||
-//                 "Cannot load inventory.",
-//                 "danger"
-//             );
-//
-//             return [];
-//         }
-//
-//         let inventory = response.body;
-//
-//         if (!Array.isArray(inventory)) {
-//
-//             if (
-//                 inventory &&
-//                 Array.isArray(inventory.content)
-//             ) {
-//                 inventory = inventory.content;
-//             } else {
-//                 inventory = [];
-//             }
-//         }
-//
-//         return inventory;
-//
-//     } catch (error) {
-//
-//         console.error(
-//             "Error loading inventory:",
-//             error
-//         );
-//
-//         showToast(
-//             "Error loading inventory.",
-//             "danger"
-//         );
-//
-//         return [];
-//     }
-// }
-//
-// async function loadInventoryRelatedData() {
-//
-//     const [branchesResponse, batchesResponse] =
-//         await Promise.all([
-//             apiFetch("/v1/pharmacy-branches", "GET"),
-//             apiFetch("/v1/medicine-batches", "GET")
-//         ]);
-//
-//     let branches =
-//         branchesResponse?.body || [];
-//
-//     let batches =
-//         batchesResponse?.body || [];
-//
-//     if (!Array.isArray(branches)) {
-//         branches = branches.content || [];
-//     }
-//
-//     if (!Array.isArray(batches)) {
-//         batches = batches.content || [];
-//     }
-//
-//     return {
-//         branches,
-//         batches
-//     };
-// }
-//
-// async function renderInventoryTable() {
-//
-//     const head =
-//         document.getElementById(
-//             "workspace-table-head"
-//         );
-//
-//     const body =
-//         document.getElementById(
-//             "workspace-table-body"
-//         );
-//
-//     const panelTitle =
-//         document.getElementById(
-//             "table-panel-title"
-//         );
-//
-//     panelTitle.textContent =
-//         "Branch Stock Allocation Sheets";
-//
-//     head.innerHTML = `
-//         <tr>
-//             <th>ID</th>
-//             <th>Branch</th>
-//             <th>Medicine / Batch</th>
-//             <th>Available Qty</th>
-//             <th>Reorder Level</th>
-//             <th>Last Updated</th>
-//             <th>Status</th>
-//             <th>Actions</th>
-//         </tr>
-//     `;
-//
-//     body.innerHTML = `
-//         <tr>
-//             <td colspan="8"
-//                 style="text-align:center; padding:2rem;">
-//                 Loading inventory...
-//             </td>
-//         </tr>
-//     `;
-//
-//     const inventory =
-//         await loadDashboardInventory();
-//
-//     const related =
-//         await loadInventoryRelatedData();
-//
-//     const branches =
-//         related.branches;
-//
-//     const batches =
-//         related.batches;
-//
-//     if (inventory.length === 0) {
-//
-//         body.innerHTML = `
-//             <tr>
-//                 <td colspan="8"
-//                     style="text-align:center;
-//                            color:var(--text-muted);">
-//                     No inventory records found.
-//                 </td>
-//             </tr>
-//         `;
-//
-//         return;
-//     }
-//
-//     body.innerHTML = "";
-//
-//     inventory.forEach(inv => {
-//
-//         const branch =
-//             branches.find(
-//                 b => b.id == inv.pharmacyBranchId
-//             );
-//
-//         const batch =
-//             batches.find(
-//                 b => b.id == inv.medicineBatchId
-//             );
-//
-//         const branchName =
-//             branch?.name ||
-//             "Unknown Branch";
-//
-//         const batchName =
-//             batch?.batchNumber ||
-//             "Unknown Batch";
-//
-//         const isLow =
-//             inv.quantity <= inv.reorderLevel;
-//
-//         const statusBadge =
-//             isLow
-//                 ? `<span class="badge badge-danger">
-//                        LOW STOCK
-//                    </span>`
-//                 : `<span class="badge badge-success">
-//                        OK STOCK
-//                    </span>`;
-//
-//         const tr =
-//             document.createElement("tr");
-//
-//         tr.innerHTML = `
-//             <td>${inv.id}</td>
-//
-//             <td>
-//                 <strong>${branchName}</strong>
-//             </td>
-//
-//             <td>
-//                 <strong>
-//                     ${batchName}
-//                 </strong>
-//             </td>
-//
-//             <td>
-//                 ${inv.quantity} Units
-//             </td>
-//
-//             <td>
-//                 ${inv.reorderLevel} Units
-//             </td>
-//
-//             <td>
-//                 <small>
-//                     ${inv.lastUpdated
-//             ? new Date(
-//                 inv.lastUpdated
-//             ).toLocaleString()
-//             : "N/A"}
-//                 </small>
-//             </td>
-//
-//             <td>
-//                 ${statusBadge}
-//             </td>
-//
-//             <td>
-//
-//                 <button
-//                     class="btn btn-secondary"
-//                     style="padding:0.25rem 0.5rem;
-//                            font-size:0.75rem;"
-//                     onclick="editInventory(${inv.id})">
-//                     Edit
-//                 </button>
-//
-//                 <button
-//                     class="btn btn-danger"
-//                     style="padding:0.25rem 0.5rem;
-//                            font-size:0.75rem;"
-//                     onclick="deleteInventory(${inv.id})">
-//                     Delete
-//                 </button>
-//
-//             </td>
-//         `;
-//
-//         body.appendChild(tr);
-//     });
-// }
-//
-// const requestBody = {
-//
-//     pharmacyBranchId:
-//         Number(
-//             document.getElementById(
-//                 "inventory-branch"
-//             ).value
-//         ),
-//
-//     medicineBatchId:
-//         Number(
-//             document.getElementById(
-//                 "inventory-batch"
-//             ).value
-//         ),
-//
-//     quantity:
-//         Number(
-//             document.getElementById(
-//                 "inventory-qty"
-//             ).value
-//         ),
-//
-//     reorderLevel:
-//         Number(
-//             document.getElementById(
-//                 "inventory-reorder"
-//             ).value
-//         )
-// };
-//
-// const response =
-//     await apiFetch(
-//         "/v1/inventories",
-//         "POST",
-//         requestBody
-//     );
-//
-//
-// async function saveInventory() {
-//
-//     const id =
-//         document.getElementById(
-//             "inventory-edit-id"
-//         ).value;
-//
-//     const qty =
-//         parseInt(
-//             document.getElementById(
-//                 "inventory-qty"
-//             ).value
-//         );
-//
-//     const reorder =
-//         parseInt(
-//             document.getElementById(
-//                 "inventory-reorder"
-//             ).value
-//         );
-//
-//     if (
-//         isNaN(qty) ||
-//         isNaN(reorder)
-//     ) {
-//
-//         showToast(
-//             "Stock quantity and reorder level must be valid numbers.",
-//             "danger"
-//         );
-//
-//         return;
-//     }
-//
-//     const current =
-//         await apiFetch(
-//             `/v1/inventories/${id}`,
-//             "GET"
-//         );
-//
-//     if (!current || !current.success) {
-//
-//         showToast(
-//             current?.message ||
-//             "Cannot load inventory record.",
-//             "danger"
-//         );
-//
-//         return;
-//     }
-//
-//     const oldInventory =
-//         current.body;
-//
-//     const requestBody = {
-//
-//         pharmacyBranchId:
-//         oldInventory.pharmacyBranchId,
-//
-//         medicineBatchId:
-//         oldInventory.medicineBatchId,
-//
-//         quantity: qty,
-//
-//         reorderLevel: reorder
-//     };
-//
-//     const response =
-//         await apiFetch(
-//             `/v1/inventories/${id}`,
-//             "PUT",
-//             requestBody
-//         );
-//
-//     if (!response || !response.success) {
-//
-//         showToast(
-//             response?.message ||
-//             "Inventory update failed.",
-//             "danger"
-//         );
-//
-//         return;
-//     }
-//
-//     closeModal("inventory-modal");
-//
-//     await loadWorkspaceTab(
-//         "inventory"
-//     );
-//
-//     showToast(
-//         "Inventory updated successfully.",
-//         "success"
-//     );
-// }
-//
-//
-// async function editInventory(id) {
-//
-//     const response =
-//         await apiFetch(
-//             `/v1/inventories/${id}`,
-//             "GET"
-//         );
-//
-//     if (!response || !response.success) {
-//
-//         showToast(
-//             response?.message ||
-//             "Cannot load inventory.",
-//             "danger"
-//         );
-//
-//         return;
-//     }
-//
-//     const inv =
-//         response.body;
-//
-//     document.getElementById(
-//         "inventory-edit-id"
-//     ).value = inv.id;
-//
-//     document.getElementById(
-//         "inventory-qty"
-//     ).value = inv.quantity;
-//
-//     document.getElementById(
-//         "inventory-reorder"
-//     ).value = inv.reorderLevel;
-//
-//     const related =
-//         await loadInventoryRelatedData();
-//
-//     const batch =
-//         related.batches.find(
-//             b =>
-//                 b.id ===
-//                 inv.medicineBatchId
-//         );
-//
-//     const branch =
-//         related.branches.find(
-//             b =>
-//                 b.id ===
-//                 inv.pharmacyBranchId
-//         );
-//
-//     document.getElementById(
-//         "inventory-med-name"
-//     ).value =
-//         `${batch?.batchNumber || "Unknown Batch"}
-//          | ${branch?.name || "Unknown Branch"}`;
-//
-//     openModal(
-//         "inventory-modal"
-//     );
-// }
-//
-//
-// async function deleteInventory(id) {
-//
-//     if (
-//         !confirm(
-//             "Are you sure you want to delete this inventory record?"
-//         )
-//     ) {
-//         return;
-//     }
-//
-//     const response =
-//         await apiFetch(
-//             `/v1/inventories/${id}`,
-//             "DELETE"
-//         );
-//
-//     if (!response || !response.success) {
-//
-//         showToast(
-//             response?.message ||
-//             "Inventory deletion failed.",
-//             "danger"
-//         );
-//
-//         return;
-//     }
-//
-//     await loadWorkspaceTab(
-//         "inventory"
-//     );
-//
-//     showToast(
-//         "Inventory deleted successfully.",
-//         "info"
-//     );
-// }
-//
-//
-// async function renderInventoryStats() {
-//
-//     const statsContainer =
-//         document.getElementById(
-//             "workspace-stats"
-//         );
-//
-//     statsContainer.innerHTML = "";
-//
-//     const inventory =
-//         await loadDashboardInventory();
-//
-//     const totalRecords =
-//         inventory.length;
-//
-//     const totalUnits =
-//         inventory.reduce(
-//             (total, item) =>
-//                 total +
-//                 Number(item.quantity || 0),
-//             0
-//         );
-//
-//     const lowStock =
-//         inventory.filter(
-//             item =>
-//                 Number(item.quantity || 0)
-//                 <=
-//                 Number(item.reorderLevel || 0)
-//         ).length;
-//
-//     const stats = [
-//
-//         {
-//             title:
-//                 "Inventory Records",
-//             value:
-//             totalRecords,
-//             desc:
-//                 "Active stock records"
-//         },
-//
-//         {
-//             title:
-//                 "Available Units",
-//             value:
-//             totalUnits,
-//             desc:
-//                 "Total physical stock"
-//         },
-//
-//         {
-//             title:
-//                 "Low Stock Items",
-//             value:
-//             lowStock,
-//             desc:
-//                 "Needs immediate reorder"
-//         }
-//
-//     ];
-//
-//     stats.forEach(stat => {
-//
-//         const div =
-//             document.createElement(
-//                 "div"
-//             );
-//
-//         div.className =
-//             "glass-card stat-card animate-fade";
-//
-//         div.innerHTML = `
-//             <div class="stat-header">
-//                 <span class="stat-title">
-//                     ${stat.title}
-//                 </span>
-//             </div>
-//
-//             <div class="stat-val">
-//                 ${stat.value}
-//             </div>
-//
-//             <span class="stat-desc">
-//                 ${stat.desc}
-//             </span>
-//         `;
-//
-//         statsContainer.appendChild(
-//             div
-//         );
-//     });
-// }
-//
-//
-//
-//
-//
-//
-//
-//
-
-
-
 // ============================================================
 // LOAD WORKSPACE TAB
 // ============================================================
 
+// ============================================================
+// INVENTORY - GET ALL FROM BACKEND
+// ============================================================
+
+async function loadDashboardInventory() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/inventories",
+                "GET"
+            );
+
+        console.log(
+            "Dashboard Inventory API Response:",
+            response
+        );
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load inventory:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load inventory.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let inventory =
+            response.body;
+
+        if (!Array.isArray(inventory)) {
+
+            if (
+                inventory &&
+                Array.isArray(inventory.content)
+            ) {
+
+                inventory =
+                    inventory.content;
+
+            } else {
+
+                inventory = [];
+            }
+        }
+
+        console.log(
+            "Inventory from Backend:",
+            inventory
+        );
+
+        return inventory;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading inventory:",
+            error
+        );
+
+        showToast(
+            "Error loading inventory.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+// ============================================================
+// INVENTORY - RENDER TABLE
+// ============================================================
+
+function renderInventoryTable(inventory) {
+
+    const $head =
+        $("#workspace-table-head");
+
+    const $body =
+        $("#workspace-table-body");
+
+    const $panelTitle =
+        $("#table-panel-title");
+
+
+    if (
+        $head.length === 0 ||
+        $body.length === 0
+    ) {
+
+        console.error(
+            "Inventory table elements not found."
+        );
+
+        return;
+
+    }
+
+
+    if ($panelTitle.length > 0) {
+
+        $panelTitle.text(
+            "Stock Inventory"
+        );
+
+    }
+
+
+    $head.html(`
+
+        <tr>
+            <th style="width:60px;">ID</th>
+            <th>Medicine / Batch Item</th>
+            <th>Current Quantity</th>
+            <th>Reorder Threshold</th>
+            <th>Status</th>
+            <th style="width:170px; text-align:right;">
+                Actions
+            </th>
+        </tr>
+
+    `);
+
+
+    $body.empty();
+
+
+    if (
+        !Array.isArray(inventory) ||
+        inventory.length === 0
+    ) {
+
+        $body.html(`
+
+            <tr>
+                <td
+                    colspan="6"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div style="
+                        margin-bottom:0.5rem;
+                        font-size:1.1rem;
+                        font-weight:500;
+                    ">
+                        No inventory records found
+                    </div>
+
+                    <div style="font-size:0.85rem;">
+                        Inventory records are created
+                        automatically when a medicine
+                        batch is registered.
+                    </div>
+                </td>
+            </tr>
+
+        `);
+
+        return;
+
+    }
+
+
+    $.each(
+        inventory,
+        function (index, item) {
+
+            const medicineName =
+                item.medicineName ||
+                (item.medicine && item.medicine.name) ||
+                "Unknown";
+
+            const quantity =
+                Number(item.quantity ?? 0);
+
+            const reorderThreshold =
+                Number(item.reorderThreshold ?? 0);
+
+            const lowStock =
+                quantity <= reorderThreshold;
+
+
+            const $row = $("<tr>");
+
+
+            $row.append(`
+                <td>
+                    #${escapeHtml(item.id)}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    <strong>
+                        ${escapeHtml(medicineName)}
+                    </strong>
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${quantity}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${reorderThreshold}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    <span
+                        class="badge ${
+                lowStock
+                    ? "badge-danger"
+                    : "badge-success"
+            }"
+                    >
+                        ${
+                lowStock
+                    ? "Low Stock"
+                    : "In Stock"
+            }
+                    </span>
+                </td>
+            `);
+
+
+            const $actions =
+                $("<td>")
+                    .css({
+                        "text-align": "right"
+                    });
+
+
+            const $editButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Edit"
+
+                });
+
+
+            $editButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                marginRight: "6px"
+
+            });
+
+
+            $editButton.on(
+                "click",
+                function () {
+
+                    editInventory(
+                        item.id,
+                        medicineName,
+                        quantity,
+                        reorderThreshold
+                    );
+
+                }
+            );
+
+
+            const $deleteButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Delete"
+
+                });
+
+
+            $deleteButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                color: "var(--accent-rose)",
+
+                borderColor:
+                    "rgba(244, 63, 94, 0.3)"
+
+            });
+
+
+            $deleteButton.on(
+                "click",
+                function () {
+
+                    deleteInventory(
+                        item.id
+                    );
+
+                }
+            );
+
+
+            $actions
+                .append($editButton)
+                .append($deleteButton);
+
+            $row.append($actions);
+
+
+            $body.append($row);
+
+        }
+    );
+
+}
+
+// ============================================================
+// INVENTORY STATISTICS
+// ============================================================
+
+function renderInventoryStats(inventory) {
+
+    const $statsContainer =
+        $("#workspace-stats");
+
+
+    if ($statsContainer.length === 0) {
+
+        return;
+
+    }
+
+
+    const list =
+        Array.isArray(inventory)
+            ? inventory
+            : [];
+
+    const total =
+        list.length;
+
+    const lowStockCount =
+        list.filter(
+            item =>
+                Number(item.quantity ?? 0) <=
+                Number(item.reorderThreshold ?? 0)
+        ).length;
+
+    const totalUnits =
+        list.reduce(
+            (sum, item) =>
+                sum + Number(item.quantity ?? 0),
+            0
+        );
+
+
+    $statsContainer.html(`
+
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Tracked Items
+                </span>
+                <div class="stat-icon">📦</div>
+            </div>
+            <div class="stat-val">${total}</div>
+            <span class="stat-desc">
+                Inventory records in the system
+            </span>
+        </div>
+
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Low Stock Alerts
+                </span>
+                <div class="stat-icon">⚠️</div>
+            </div>
+            <div class="stat-val">${lowStockCount}</div>
+            <span class="stat-desc">
+                Items at or below reorder threshold
+            </span>
+        </div>
+
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Total Units
+                </span>
+                <div class="stat-icon">🔢</div>
+            </div>
+            <div class="stat-val">${totalUnits}</div>
+            <span class="stat-desc">
+                Physical units across all items
+            </span>
+        </div>
+
+    `);
+
+}
+
+// ============================================================
+// INVENTORY - OPEN EDIT MODAL
+// ============================================================
+
+function editInventory(id, medicineName, quantity, reorderThreshold) {
+
+    const $idInput =
+        $("#inventory-edit-id");
+
+    const $nameInput =
+        $("#inventory-med-name");
+
+    const $qtyInput =
+        $("#inventory-qty");
+
+    const $reorderInput =
+        $("#inventory-reorder");
+
+
+    if (
+        $idInput.length === 0 ||
+        $nameInput.length === 0 ||
+        $qtyInput.length === 0 ||
+        $reorderInput.length === 0
+    ) {
+
+        console.error(
+            "Inventory modal elements are missing from dashboard.html"
+        );
+
+        showToast(
+            "Inventory form could not be opened.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    $idInput.val(id ?? "");
+
+    $nameInput.val(medicineName ?? "");
+
+    $qtyInput.val(quantity ?? 0);
+
+    $reorderInput.val(reorderThreshold ?? 0);
+
+
+    openModal("inventory-modal");
+}
+
+// ============================================================
+// INVENTORY - SAVE (UPDATE STOCK)
+// ============================================================
+
+async function saveInventory() {
+
+    const $idInput =
+        $("#inventory-edit-id");
+
+    const $qtyInput =
+        $("#inventory-qty");
+
+    const $reorderInput =
+        $("#inventory-reorder");
+
+
+    if (
+        $idInput.length === 0 ||
+        $qtyInput.length === 0 ||
+        $reorderInput.length === 0
+    ) {
+
+        console.error(
+            "Inventory form elements not found."
+        );
+
+        showToast(
+            "Inventory form fields not found.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    const id =
+        ($idInput.val() || "").trim();
+
+    const quantity =
+        Number($qtyInput.val());
+
+    const reorderThreshold =
+        Number($reorderInput.val());
+
+
+    if (!id) {
+
+        showToast(
+            "No inventory item selected.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    if (
+        isNaN(quantity) ||
+        quantity < 0
+    ) {
+
+        showToast(
+            "Please enter a valid quantity.",
+            "warning"
+        );
+
+        $qtyInput.focus();
+
+        return;
+    }
+
+
+    if (
+        isNaN(reorderThreshold) ||
+        reorderThreshold < 0
+    ) {
+
+        showToast(
+            "Please enter a valid reorder threshold.",
+            "warning"
+        );
+
+        $reorderInput.focus();
+
+        return;
+    }
+
+
+    const payload = {
+
+        quantity: quantity,
+
+        reorderThreshold: reorderThreshold
+
+    };
+
+
+    showToast(
+        "Updating stock...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/inventories/${id}`,
+                "PUT",
+                payload
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to update stock.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Stock updated successfully!",
+            "success"
+        );
+
+
+        closeModal(
+            "inventory-modal"
+        );
+
+
+        await loadWorkspaceTab(
+            "inventory"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error updating stock:",
+            error
+        );
+
+        showToast(
+            "Error updating stock.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// INVENTORY - DELETE
+// ============================================================
+
+async function deleteInventory(id) {
+
+    if (
+        !confirm(
+            `Are you sure you want to delete inventory record #${id}?`
+        )
+    ) {
+
+        return;
+    }
+
+
+    showToast(
+        "Deleting inventory record...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/inventories/${id}`,
+                "DELETE"
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete inventory record.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Inventory record deleted successfully!",
+            "success"
+        );
+
+
+        await loadWorkspaceTab(
+            "inventory"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting inventory record:",
+            error
+        );
+
+        showToast(
+            "Error deleting inventory record.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// NOTIFICATIONS - GET ALL FROM BACKEND
+// ============================================================
+
+async function loadDashboardNotifications() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/notifications",
+                "GET"
+            );
+
+        console.log(
+            "Dashboard Notifications API Response:",
+            response
+        );
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load notifications:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load notifications.",
+                "danger"
+            );
+
+            return [];
+        }
+
+        let notifications =
+            response.body;
+
+        if (!Array.isArray(notifications)) {
+
+            if (
+                notifications &&
+                Array.isArray(notifications.content)
+            ) {
+
+                notifications =
+                    notifications.content;
+
+            } else {
+
+                notifications = [];
+            }
+        }
+
+        console.log(
+            "Notifications from Backend:",
+            notifications
+        );
+
+        return notifications;
+
+    } catch (error) {
+
+        console.error(
+            "Error loading notifications:",
+            error
+        );
+
+        showToast(
+            "Error loading notifications.",
+            "danger"
+        );
+
+        return [];
+    }
+}
+
+// ============================================================
+// NOTIFICATIONS - RENDER TABLE
+// ============================================================
+
+function renderNotificationTable(notifications) {
+
+    const $head =
+        $("#workspace-table-head");
+
+    const $body =
+        $("#workspace-table-body");
+
+    const $panelTitle =
+        $("#table-panel-title");
+
+
+    if (
+        $head.length === 0 ||
+        $body.length === 0
+    ) {
+
+        console.error(
+            "Notification table elements not found."
+        );
+
+        return;
+
+    }
+
+
+    if ($panelTitle.length > 0) {
+
+        $panelTitle.text(
+            "System Notifications"
+        );
+
+    }
+
+
+    $head.html(`
+
+        <tr>
+            <th style="width:60px;">ID</th>
+            <th>Title</th>
+            <th>Message</th>
+            <th>Type</th>
+            <th>Audience</th>
+            <th style="width:110px; text-align:right;">
+                Actions
+            </th>
+        </tr>
+
+    `);
+
+
+    $body.empty();
+
+
+    if (
+        !Array.isArray(notifications) ||
+        notifications.length === 0
+    ) {
+
+        $body.html(`
+
+            <tr>
+                <td
+                    colspan="6"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div style="
+                        margin-bottom:0.5rem;
+                        font-size:1.1rem;
+                        font-weight:500;
+                    ">
+                        No notifications found
+                    </div>
+
+                    <div style="font-size:0.85rem;">
+                        Click "Send Notification" above to
+                        broadcast your first message.
+                    </div>
+                </td>
+            </tr>
+
+        `);
+
+        return;
+
+    }
+
+
+    $.each(
+        notifications,
+        function (index, notification) {
+
+            const badgeClass =
+                notification.type === "ALERT"
+                    ? "badge-danger"
+                    : notification.type === "WARNING"
+                        ? "badge-warning"
+                        : "badge-success";
+
+
+            const $row = $("<tr>");
+
+
+            $row.append(`
+                <td>
+                    #${escapeHtml(notification.id)}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    <strong>
+                        ${escapeHtml(notification.title)}
+                    </strong>
+                </td>
+            `);
+
+
+            $row.append(`
+                <td style="color:var(--text-secondary);">
+                    ${escapeHtml(
+                (notification.message || "").length > 60
+                    ? notification.message.slice(0, 60) + "..."
+                    : (notification.message || "")
+            )}
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    <span class="badge ${badgeClass}">
+                        ${escapeHtml(notification.type || "INFO")}
+                    </span>
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${escapeHtml(notification.audience || "ALL")}
+                </td>
+            `);
+
+
+            const $actions =
+                $("<td>")
+                    .css({
+                        "text-align": "right"
+                    });
+
+
+            const $deleteButton =
+                $("<button>", {
+
+                    type: "button",
+
+                    class: "btn btn-secondary",
+
+                    text: "Delete"
+
+                });
+
+
+            $deleteButton.css({
+
+                padding: "0.3rem 0.65rem",
+
+                fontSize: "0.75rem",
+
+                color: "var(--accent-rose)",
+
+                borderColor:
+                    "rgba(244, 63, 94, 0.3)"
+
+            });
+
+
+            $deleteButton.on(
+                "click",
+                function () {
+
+                    deleteNotification(
+                        notification.id
+                    );
+
+                }
+            );
+
+
+            $actions.append($deleteButton);
+
+            $row.append($actions);
+
+
+            $body.append($row);
+
+        }
+    );
+
+}
+
+// ============================================================
+// NOTIFICATION STATISTICS
+// ============================================================
+
+function renderNotificationStats(notifications) {
+
+    const $statsContainer =
+        $("#workspace-stats");
+
+
+    if ($statsContainer.length === 0) {
+
+        return;
+
+    }
+
+
+    const list =
+        Array.isArray(notifications)
+            ? notifications
+            : [];
+
+    const total =
+        list.length;
+
+    const alerts =
+        list.filter(
+            notification => notification.type === "ALERT"
+        ).length;
+
+    const warnings =
+        list.filter(
+            notification => notification.type === "WARNING"
+        ).length;
+
+
+    $statsContainer.html(`
+
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Total Notifications
+                </span>
+                <div class="stat-icon">🔔</div>
+            </div>
+            <div class="stat-val">${total}</div>
+            <span class="stat-desc">
+                Broadcasts sent from the console
+            </span>
+        </div>
+
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Alerts
+                </span>
+                <div class="stat-icon">🚨</div>
+            </div>
+            <div class="stat-val">${alerts}</div>
+            <span class="stat-desc">
+                Critical alerts requiring attention
+            </span>
+        </div>
+
+        <div class="glass-card stat-card animate-fade">
+            <div class="stat-header">
+                <span class="stat-title">
+                    Warnings
+                </span>
+                <div class="stat-icon">⚠️</div>
+            </div>
+            <div class="stat-val">${warnings}</div>
+            <span class="stat-desc">
+                Warnings sent to users
+            </span>
+        </div>
+
+    `);
+
+}
+
+// ============================================================
+// NOTIFICATION - OPEN MODAL
+// ============================================================
+
+function openNotificationModal() {
+
+    const $title =
+        $("#notification-modal-title");
+
+    const $idInput =
+        $("#notification-edit-id");
+
+    const $titleInput =
+        $("#notification-title");
+
+    const $messageInput =
+        $("#notification-message");
+
+    const $typeInput =
+        $("#notification-type");
+
+    const $audienceInput =
+        $("#notification-audience");
+
+
+    if (
+        $title.length === 0 ||
+        $idInput.length === 0 ||
+        $titleInput.length === 0 ||
+        $messageInput.length === 0 ||
+        $typeInput.length === 0 ||
+        $audienceInput.length === 0
+    ) {
+
+        console.error(
+            "Notification modal elements are missing from dashboard.html"
+        );
+
+        showToast(
+            "Notification form could not be opened.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    $title.text(
+        "Send Notification"
+    );
+
+    $idInput.val("");
+
+    $titleInput.val("");
+
+    $messageInput.val("");
+
+    $typeInput.val("INFO");
+
+    $audienceInput.val("ALL");
+
+
+    openModal("notification-modal");
+}
+
+// ============================================================
+// NOTIFICATION - SAVE (SEND)
+// ============================================================
+
+async function saveNotification() {
+
+    const $titleInput =
+        $("#notification-title");
+
+    const $messageInput =
+        $("#notification-message");
+
+    const $typeInput =
+        $("#notification-type");
+
+    const $audienceInput =
+        $("#notification-audience");
+
+
+    if (
+        $titleInput.length === 0 ||
+        $messageInput.length === 0 ||
+        $typeInput.length === 0 ||
+        $audienceInput.length === 0
+    ) {
+
+        console.error(
+            "Notification form elements not found."
+        );
+
+        showToast(
+            "Notification form fields not found.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+    const title =
+        ($titleInput.val() || "").trim();
+
+    const message =
+        ($messageInput.val() || "").trim();
+
+    const type =
+        $typeInput.val();
+
+    const audience =
+        $audienceInput.val();
+
+
+    if (!title) {
+
+        showToast(
+            "Notification title is required.",
+            "warning"
+        );
+
+        $titleInput.focus();
+
+        return;
+    }
+
+
+    if (!message) {
+
+        showToast(
+            "Notification message is required.",
+            "warning"
+        );
+
+        $messageInput.focus();
+
+        return;
+    }
+
+
+    const payload = {
+
+        title: title,
+
+        message: message,
+
+        type: type,
+
+        audience: audience
+
+    };
+
+
+    showToast(
+        "Sending notification...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/notifications",
+                "POST",
+                payload
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to send notification.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Notification sent successfully!",
+            "success"
+        );
+
+
+        closeModal(
+            "notification-modal"
+        );
+
+
+        await loadWorkspaceTab(
+            "notifications"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error sending notification:",
+            error
+        );
+
+        showToast(
+            "Error sending notification.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// NOTIFICATION - DELETE
+// ============================================================
+
+async function deleteNotification(id) {
+
+    if (
+        !confirm(
+            `Are you sure you want to delete notification #${id}?`
+        )
+    ) {
+
+        return;
+    }
+
+
+    showToast(
+        "Deleting notification...",
+        "info"
+    );
+
+
+    try {
+
+        const response =
+            await apiFetch(
+                `/v1/notifications/${id}`,
+                "DELETE"
+            );
+
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            showToast(
+                response?.message ||
+                "Failed to delete notification.",
+                "danger"
+            );
+
+            return;
+        }
+
+
+        showToast(
+            "Notification deleted successfully!",
+            "success"
+        );
+
+
+        await loadWorkspaceTab(
+            "notifications"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error deleting notification:",
+            error
+        );
+
+        showToast(
+            "Error deleting notification.",
+            "danger"
+        );
+    }
+}
+
+// ============================================================
+// REPORTS - GET SUMMARY FROM BACKEND
+// ============================================================
+//
+// NOTE: Unlike the other entities, the backend Reports API
+// (GET /v1/reports) is a single read-only endpoint that
+// returns one summary object (Map<String,Object>) — there is
+// no create, update, or delete, and no list of saved report
+// records. So this section is a read-only analytics view,
+// not a CRUD table.
+// ============================================================
+
+async function loadDashboardReports() {
+
+    try {
+
+        const response =
+            await apiFetch(
+                "/v1/reports",
+                "GET"
+            );
+
+        console.log(
+            "Dashboard Reports API Response:",
+            response
+        );
+
+        if (
+            !response ||
+            !response.success
+        ) {
+
+            console.error(
+                "Failed to load reports:",
+                response?.message
+            );
+
+            showToast(
+                response?.message ||
+                "Cannot load reports.",
+                "danger"
+            );
+
+            return {};
+        }
+
+        const report =
+            response.body;
+
+        console.log(
+            "Report Summary from Backend:",
+            report
+        );
+
+        return (
+            report &&
+            typeof report === "object"
+        )
+            ? report
+            : {};
+
+    } catch (error) {
+
+        console.error(
+            "Error loading reports:",
+            error
+        );
+
+        showToast(
+            "Error loading reports.",
+            "danger"
+        );
+
+        return {};
+    }
+}
+
+// ============================================================
+// REPORTS - RENDER SUMMARY TABLE
+// ============================================================
+//
+// The backend returns an arbitrary key/value summary object,
+// so instead of a fixed set of columns we render every
+// key/value pair the backend sends back as a metric row.
+// ============================================================
+
+function renderReportTable(report) {
+
+    const $head =
+        $("#workspace-table-head");
+
+    const $body =
+        $("#workspace-table-body");
+
+    const $panelTitle =
+        $("#table-panel-title");
+
+
+    if (
+        $head.length === 0 ||
+        $body.length === 0
+    ) {
+
+        console.error(
+            "Report table elements not found."
+        );
+
+        return;
+
+    }
+
+
+    if ($panelTitle.length > 0) {
+
+        $panelTitle.text(
+            "Report Metrics"
+        );
+
+    }
+
+
+    $head.html(`
+
+        <tr>
+            <th>Metric</th>
+            <th>Value</th>
+        </tr>
+
+    `);
+
+
+    $body.empty();
+
+
+    const entries =
+        (report && typeof report === "object")
+            ? Object.entries(report)
+            : [];
+
+
+    if (entries.length === 0) {
+
+        $body.html(`
+
+            <tr>
+                <td
+                    colspan="2"
+                    style="
+                        text-align:center;
+                        padding:2.5rem;
+                        color:var(--text-muted);
+                    "
+                >
+                    <div style="
+                        margin-bottom:0.5rem;
+                        font-size:1.1rem;
+                        font-weight:500;
+                    ">
+                        No report data available
+                    </div>
+
+                    <div style="font-size:0.85rem;">
+                        The backend did not return any
+                        report metrics.
+                    </div>
+                </td>
+            </tr>
+
+        `);
+
+        return;
+
+    }
+
+
+    $.each(
+        entries,
+        function (index, entry) {
+
+            const key = entry[0];
+            const value = entry[1];
+
+            const $row = $("<tr>");
+
+
+            $row.append(`
+                <td>
+                    <strong>
+                        ${escapeHtml(formatReportKey(key))}
+                    </strong>
+                </td>
+            `);
+
+
+            $row.append(`
+                <td>
+                    ${escapeHtml(formatReportValue(value))}
+                </td>
+            `);
+
+
+            $body.append($row);
+
+        }
+    );
+
+}
+
+// ============================================================
+// REPORT KEY / VALUE FORMATTING HELPERS
+// ============================================================
+
+function formatReportKey(key) {
+
+    if (!key) {
+        return "";
+    }
+
+    // Convert camelCase / snake_case keys into readable labels
+    const spaced =
+        String(key)
+            .replace(/_/g, " ")
+            .replace(/([a-z])([A-Z])/g, "$1 $2");
+
+    return (
+        spaced.charAt(0).toUpperCase() +
+        spaced.slice(1)
+    );
+}
+
+function formatReportValue(value) {
+
+    if (value === null || value === undefined) {
+        return "-";
+    }
+
+    if (
+        typeof value === "object"
+    ) {
+
+        try {
+
+            return JSON.stringify(value);
+
+        } catch (error) {
+
+            return String(value);
+        }
+    }
+
+    return String(value);
+}
+
+// ============================================================
+// REPORT STATISTICS
+// ============================================================
+//
+// Shows up to the first 3 numeric metrics from the summary
+// as highlight cards. Falls back gracefully if the backend
+// sends fewer than 3 numeric fields.
+// ============================================================
+
+function renderReportStats(report) {
+
+    const $statsContainer =
+        $("#workspace-stats");
+
+
+    if ($statsContainer.length === 0) {
+
+        return;
+
+    }
+
+
+    const entries =
+        (report && typeof report === "object")
+            ? Object.entries(report)
+            : [];
+
+    const numericEntries =
+        entries.filter(
+            entry =>
+                typeof entry[1] === "number"
+        );
+
+    const highlightEntries =
+        numericEntries.slice(0, 3);
+
+
+    if (highlightEntries.length === 0) {
+
+        $statsContainer.html(`
+
+            <div class="glass-card stat-card animate-fade">
+                <div class="stat-header">
+                    <span class="stat-title">
+                        Report Metrics
+                    </span>
+                    <div class="stat-icon">📊</div>
+                </div>
+                <div class="stat-val">${entries.length}</div>
+                <span class="stat-desc">
+                    Fields returned by the backend
+                </span>
+            </div>
+
+        `);
+
+        return;
+
+    }
+
+
+    let html = "";
+
+    $.each(
+        highlightEntries,
+        function (index, entry) {
+
+            html += `
+                <div class="glass-card stat-card animate-fade">
+                    <div class="stat-header">
+                        <span class="stat-title">
+                            ${escapeHtml(formatReportKey(entry[0]))}
+                        </span>
+                        <div class="stat-icon">📊</div>
+                    </div>
+                    <div class="stat-val">${escapeHtml(String(entry[1]))}</div>
+                    <span class="stat-desc">
+                        From the live report summary
+                    </span>
+                </div>
+            `;
+
+        }
+    );
+
+
+    $statsContainer.html(html);
+
+}
+
 async function loadWorkspaceTab(tabId) {
-    const wTitle = document.getElementById("workspace-title");
-    const wDesc = document.getElementById("workspace-desc");
-    const wActions = document.getElementById("workspace-actions");
-    const wStats = document.getElementById("workspace-stats");
-    const tHead = document.getElementById("workspace-table-head");
-    const tBody = document.getElementById("workspace-table-body");
-    const tTitle = document.getElementById("table-panel-title");
 
-    if (!wTitle || !wDesc || !wActions) {
-        console.error("Workspace elements not found.");
+    const $wTitle =
+        $("#workspace-title");
+
+    const $wDesc =
+        $("#workspace-desc");
+
+    const $wActions =
+        $("#workspace-actions");
+
+
+    if (
+        $wTitle.length === 0 ||
+        $wDesc.length === 0 ||
+        $wActions.length === 0
+    ) {
+
+        console.error(
+            "Workspace elements not found."
+        );
+
         return;
+
     }
 
-    wActions.innerHTML = "";
 
+    // --------------------------------------------------------
+    // CLEAR ACTIONS
+    // --------------------------------------------------------
+
+    $wActions.empty();
+
+
+    // ========================================================
     // MEDICINE CATEGORIES
+    // ========================================================
+
     if (tabId === "categories") {
-        wTitle.textContent = "Medicine Categories";
-        wDesc.textContent = "Define therapeutic classifications for the medicine database template.";
 
-        wActions.innerHTML = `
-            <button class="btn btn-primary" onclick="openCategoryModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        $wTitle.text(
+            "Medicine Categories"
+        );
+
+
+        $wDesc.text(
+            "Define therapeutic classifications for the medicine database template."
+        );
+
+
+        $wActions.html(`
+
+            <button
+                type="button"
+                id="add-category-btn"
+                class="btn btn-primary"
+            >
+
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                >
+
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 4.5v15m7.5-7.5h-15"
+                    />
+
                 </svg>
-                Add Category
-            </button>
-        `;
 
-        const categories = await loadDashboardCategories();
-        renderCategoryTable(categories);
-        renderCategoryStats(categories);
+                Add Category
+
+            </button>
+
+        `);
+
+
+        /*
+         * IMPORTANT:
+         *
+         * No inline onclick.
+         *
+         * jQuery event binding.
+         */
+
+        $("#add-category-btn").on(
+            "click",
+            function () {
+
+                openCategoryModal();
+
+            }
+        );
+
+
+        // ----------------------------------------------------
+        // LOAD FROM BACKEND
+        // ----------------------------------------------------
+
+        const categories =
+            await loadDashboardCategories();
+
+
+        // ----------------------------------------------------
+        // RENDER TABLE
+        // ----------------------------------------------------
+
+        renderCategoryTable(
+            categories
+        );
+
+
+        // ----------------------------------------------------
+        // RENDER STATS
+        // ----------------------------------------------------
+
+        renderCategoryStats(
+            categories
+        );
+
+
         return;
+
     }
 
-// ============================================================
-// MEDICINES
-// ============================================================
+
+    // ========================================================
+    // MEDICINES
+    // ========================================================
 
     if (tabId === "medicines") {
-        wTitle.textContent = "Medicine Catalog";
-        wDesc.textContent = "Manage medicines stored in the MediFind database.";
-        wActions.innerHTML = `
-        <button class="btn btn-primary"    onclick="openMedicineModal()">+ Add Medicine</button>
-    `;
-        const medicines = await loadDashboardMedicines();
-        const categories = await loadDashboardCategories();
+
+        $wTitle.text(
+            "Medicine Catalog"
+        );
+
+
+        $wDesc.text(
+            "Manage medicines stored in the MediFind database."
+        );
+
+
+        $wActions.html(`
+
+            <button
+                type="button"
+                id="add-medicine-btn"
+                class="btn btn-primary"
+            >
+                + Add Medicine
+            </button>
+
+        `);
+
+
+        $("#add-medicine-btn").on(
+            "click",
+            function () {
+
+                openMedicineModal();
+
+            }
+        );
+
+
+        const medicines =
+            await loadDashboardMedicines();
+
+
+        const categories =
+            await loadDashboardCategories();
+
+
         renderMedicineTable(
             medicines,
             categories
         );
+
+
         renderMedicineStats(
             medicines
         );
+
+
         return;
+
     }
 
-// ============================================================
-// PHARMACIES
-// ============================================================
+
+    // ========================================================
+    // PHARMACIES
+    // ========================================================
 
     if (tabId === "pharmacies") {
-        wTitle.textContent = "Registered Pharmacies";
-        wDesc.textContent = "Manage affiliated corporate pharmacy accounts.";
-        wActions.innerHTML = `
-        <button  class="btn btn-primary" onclick="openPharmacyModal()" >
-            + Register Pharmacy
-        </button>
-    `;
 
-        const pharmacies = await loadDashboardPharmacies();
-        const owners = await loadPharmacyOwners();
+        $wTitle.text(
+            "Registered Pharmacies"
+        );
 
-        renderPharmacyTable(pharmacies, owners);
-        renderPharmacyStats(pharmacies);
+
+        $wDesc.text(
+            "Manage affiliated corporate pharmacy accounts."
+        );
+
+
+        $wActions.html(`
+
+            <button
+                type="button"
+                id="register-pharmacy-btn"
+                class="btn btn-primary"
+            >
+                + Register Pharmacy
+            </button>
+
+        `);
+
+
+        $("#register-pharmacy-btn").on(
+            "click",
+            function () {
+
+                openPharmacyModal();
+
+            }
+        );
+
+
+        const pharmacies =
+            await loadDashboardPharmacies();
+
+
+        const owners =
+            await loadPharmacyOwners();
+
+
+        renderPharmacyTable(
+            pharmacies,
+            owners
+        );
+
+
+        renderPharmacyStats(
+            pharmacies
+        );
+
+
         return;
+
     }
 
- if (tabId === "branches") {
-    wTitle.textContent = "Pharmacy Branches";
-    wDesc.textContent = "Manage pharmacy branch outlets and their operational status.";
-    wActions.innerHTML = ` <button  class="btn btn-primary" onclick="openBranchModal()">
-         Register Pharmacy Branch
-        </button>
-    `;
-        loadDashboardBranches().then(branches => {
-        renderBranchTable(branches);
-        renderBranchStats(branches);
 
-       }
-     );
+    // ========================================================
+    // PHARMACY BRANCHES
+    // ========================================================
+
+    if (tabId === "branches") {
+
+        $wTitle.text(
+            "Pharmacy Branches"
+        );
+
+
+        $wDesc.text(
+            "Manage pharmacy branch outlets and their operational status."
+        );
+
+
+        $wActions.html(`
+
+            <button
+                type="button"
+                id="register-branch-btn"
+                class="btn btn-primary"
+            >
+                Register Pharmacy Branch
+            </button>
+
+        `);
+
+
+        $("#register-branch-btn").on(
+            "click",
+            function () {
+
+                openBranchModal();
+
+            }
+        );
+
+
+        const branches =
+            await loadDashboardBranches();
+
+
+        renderBranchTable(
+            branches
+        );
+
+
+        renderBranchStats(
+            branches
+        );
+
+
+        return;
+
     }
+
+
+    // ========================================================
+    // RESERVATIONS
+    // ========================================================
 
     if (tabId === "reservations") {
-        wTitle.textContent = "Prescription Reservations";
-        wDesc.textContent = "Process and verify client pharmacy reservations.";
-        const reservations = await loadDashboardReservations();
-        renderReservationStats(reservations);
-        renderReservationTable(reservations);
+
+        $wTitle.text(
+            "Prescription Reservations"
+        );
+
+
+        $wDesc.text(
+            "Process and verify client pharmacy reservations."
+        );
+
+
+        const reservations =
+            await loadDashboardReservations();
+
+
+        renderReservationStats(
+            reservations
+        );
+
+
+        renderReservationTable(
+            reservations
+        );
+
+
         return;
+
     }
 
-    // if (tabId === "inventory") {
-    //     wTitle.textContent = "Inventory Stock & Alerts";
-    //     wDesc.textContent = "Manage stock quantities, warning levels, and identify low stock levels.";
-    //     wActions.innerHTML = `
-    //     <button  class="btn btn-primary" onclick=" openInventoryModal() ">
-    //         Update Stock
-    //     </button>
-    // `;
-    //     await renderInventoryStats();
-    //     await renderInventoryTable();
-    //
-    //     return;
-    // }
 
-    console.log("Workspace tab selected:", tabId);
+    // ========================================================
+    // INVENTORY
+    // ========================================================
+
+    if (tabId === "inventory") {
+
+        $wTitle.text(
+            "Stock Inventory"
+        );
+
+
+        $wDesc.text(
+            "Monitor stock levels and reorder thresholds across the catalog."
+        );
+
+
+        const inventory =
+            await loadDashboardInventory();
+
+
+        renderInventoryTable(
+            inventory
+        );
+
+
+        renderInventoryStats(
+            inventory
+        );
+
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // NOTIFICATIONS
+    // ========================================================
+
+    if (tabId === "notifications") {
+
+        $wTitle.text(
+            "System Notifications"
+        );
+
+
+        $wDesc.text(
+            "Broadcast alerts and messages to platform users."
+        );
+
+
+        $wActions.html(`
+
+            <button
+                type="button"
+                id="send-notification-btn"
+                class="btn btn-primary"
+            >
+                + Send Notification
+            </button>
+
+        `);
+
+
+        $("#send-notification-btn").on(
+            "click",
+            function () {
+
+                openNotificationModal();
+
+            }
+        );
+
+
+        const notifications =
+            await loadDashboardNotifications();
+
+
+        renderNotificationTable(
+            notifications
+        );
+
+
+        renderNotificationStats(
+            notifications
+        );
+
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // REPORTS
+    // ========================================================
+
+    if (tabId === "reports") {
+
+        $wTitle.text(
+            "Report Summary"
+        );
+
+
+        $wDesc.text(
+            "Live analytics summary returned by the reports API."
+        );
+
+
+        // No create/edit/delete actions here — the backend
+        // Reports API (GET /v1/reports) is a single read-only
+        // summary endpoint.
+
+
+        const report =
+            await loadDashboardReports();
+
+
+        renderReportTable(
+            report
+        );
+
+
+        renderReportStats(
+            report
+        );
+
+
+        return;
+
+    }
+
+
+    // ========================================================
+    // DEFAULT
+    // ========================================================
+
+    console.log(
+        "Workspace tab selected:",
+        tabId
+    );
+
 }
-
 // ============================================================
 // TAB FRIENDLY NAMES
 // ============================================================
@@ -4763,7 +7373,9 @@ function getTabFriendlyName(tabId) {
         medicines: "Medicines",
         pharmacies: "Pharmacies",
         branches: "Branches",
-        //inventory: "Inventory",
+        inventory: "Inventory",
+        notifications: "Notifications",
+        reports: "Reports",
         reservations: "Reservations",
 
     };
@@ -4838,6 +7450,27 @@ function switchRole(role) {
            </svg>
             Pharmacies
             </li>
+
+            <li class="sidebar-item" onclick="selectSidebarTab(this, 'inventory')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+             Inventory
+             </li>
+
+            <li class="sidebar-item" onclick="selectSidebarTab(this, 'notifications')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+             Notifications
+             </li>
+
+            <li class="sidebar-item" onclick="selectSidebarTab(this, 'reports')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+             Reports
+             </li>
             `;
            loadWorkspaceTab("categories");
 
@@ -4853,12 +7486,7 @@ function switchRole(role) {
                 </svg>
                 Branches
             </li>
-<!--             <li class="sidebar-item" onclick="selectSidebarTab(this, 'inventory')">-->
-<!--               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">-->
-<!--                    <path stroke-linecap="round"   stroke-linejoin="round" d="M3 7h18M3 7l2 14h14l2-14M8 7V5a4 4 0 018 0v2" />-->
-<!--               </svg>-->
-<!--                Inventory-->
-<!--              </li>-->
+           
         `;
 
         loadWorkspaceTab("branches");
@@ -4889,4 +7517,66 @@ document.addEventListener("DOMContentLoaded", function () {
     // Default to ADMIN view which loads medicine categories
     switchRole("ADMIN");
 });
+
+
+// ============================================================
+// GLOBAL EXPORTS
+// ============================================================
+// Required so inline onclick="..." attributes in the HTML
+// (e.g. onclick="closeModal('category-modal')",
+// onclick="saveCategory()") can find these functions on
+// window. Without this, buttons bound via inline onclick
+// silently fail with "X is not defined" if this script is
+// ever loaded as type="module" or otherwise scoped.
+// ============================================================
+
+// Modal controls
+window.openModal = openModal;
+window.closeModal = closeModal;
+
+// Medicine Categories
+window.openCategoryModal = openCategoryModal;
+window.editCategory = editCategory;
+window.saveCategory = saveCategory;
+window.deleteCategory = deleteCategory;
+
+// Medicines
+window.openMedicineModal = openMedicineModal;
+window.editMedicine = editMedicine;
+window.saveMedicine = saveMedicine;
+window.deleteMedicine = deleteMedicine;
+
+// Pharmacies
+window.openPharmacyModal = openPharmacyModal;
+window.savePharmacy = savePharmacy;
+window.editPharmacy = editPharmacy;
+window.deletePharmacy = deletePharmacy;
+
+// Pharmacy Branches
+window.openBranchModal = openBranchModal;
+window.saveBranch = saveBranch;
+window.editBranch = editBranch;
+window.deleteBranch = deleteBranch;
+
+// Reservations
+window.processReservation = processReservation;
+window.saveReservationStatus = saveReservationStatus;
+window.deleteReservation = deleteReservation;
+
+// Inventory
+window.editInventory = editInventory;
+window.saveInventory = saveInventory;
+window.deleteInventory = deleteInventory;
+
+// Notifications
+window.openNotificationModal = openNotificationModal;
+window.saveNotification = saveNotification;
+window.deleteNotification = deleteNotification;
+
+// Reports
+// (read-only summary — no create/update/delete on the backend)
+
+// Sidebar & role switching
+window.selectSidebarTab = selectSidebarTab;
+window.switchRole = switchRole;
 

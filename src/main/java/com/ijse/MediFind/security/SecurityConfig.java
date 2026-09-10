@@ -77,10 +77,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/v1/reservation-items/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN", "PHARMACY_STAFF")
 
 
-//                        .requestMatchers(HttpMethod.GET, "/v1/inventories", "/v1/inventories/**").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
-//                        .requestMatchers(HttpMethod.POST, "/v1/inventories").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
-//                        .requestMatchers(HttpMethod.PUT, "/v1/inventories/**").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
-//                        .requestMatchers(HttpMethod.DELETE, "/v1/inventories/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/v1/inventories", "/v1/inventories/**").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
+                        .requestMatchers(HttpMethod.POST, "/v1/inventories").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
+                        .requestMatchers(HttpMethod.PUT, "/v1/inventories/**").hasAnyRole("ADMIN","PHARMACY_ADMIN","PHARMACY_STAFF")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/inventories/**").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/v1/notifications", "/v1/notifications/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/v1/notifications").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/v1/notifications/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/v1/notifications/**").hasAnyRole("ADMIN","PHARMACY_ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/v1/reports").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
 
                         .requestMatchers(HttpMethod.GET, "/v1/reports").hasAnyRole("ADMIN", "PHARMACY_ADMIN")
                         .requestMatchers("/", "/index.html", "/dashboard.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
