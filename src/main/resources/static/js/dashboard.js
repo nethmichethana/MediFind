@@ -266,15 +266,6 @@ async function loadDashboardCategories() {
         }
 
 
-        /*
-         * CommonResponse:
-         *
-         * {
-         *     status: 0,
-         *     body: [...],
-         *     message: "Operation successful"
-         * }
-         */
 
         if (response.status !== 0) {
 
@@ -296,25 +287,6 @@ async function loadDashboardCategories() {
 
 
         let categories = response.body;
-
-
-        /*
-         * Safety check.
-         *
-         * If backend returns:
-         *
-         * body: [...]
-         *
-         * use it directly.
-         *
-         * If backend later returns:
-         *
-         * body: {
-         *     content: [...]
-         * }
-         *
-         * handle that too.
-         */
 
         if (!Array.isArray(categories)) {
 
@@ -521,19 +493,6 @@ function renderCategoryTable(categories) {
 
             const safeDescription =
                 escapeHtml(description);
-
-
-            /*
-             * Instead of putting category name/description
-             * directly into inline JavaScript, store them
-             * in data attributes.
-             *
-             * This avoids:
-             *
-             * openCategoryModal is not defined
-             * quote escaping problems
-             * apostrophe problems
-             */
 
             const $row = $("<tr>");
 
@@ -2634,7 +2593,6 @@ async function deleteMedicine(id) {
         );
     }
 }
-
 // ============================================================
 // PHARMACY - GET ALL FROM BACKEND
 // ============================================================
@@ -2643,11 +2601,25 @@ async function loadDashboardPharmacies() {
 
     try {
 
-        const response =
-            await apiFetch(
-                "/v1/pharmacies",
-                "GET"
-            );
+        const token =
+            localStorage.getItem("medifind_token");
+
+        const response = await $.ajax({
+
+            url: "http://localhost:8080/v1/pharmacies",
+
+            method: "GET",
+
+            headers: token
+                ? {
+                    "Authorization":
+                        "Bearer " + token
+                }
+                : {},
+
+            dataType: "json"
+
+        });
 
         console.log(
             "Dashboard Pharmacies API Response:",
@@ -2656,13 +2628,8 @@ async function loadDashboardPharmacies() {
 
         if (
             !response ||
-            !response.success
+            response.status !== 0
         ) {
-
-            console.error(
-                "Failed to load pharmacies:",
-                response?.message
-            );
 
             showToast(
                 response?.message ||
@@ -2671,6 +2638,7 @@ async function loadDashboardPharmacies() {
             );
 
             return [];
+
         }
 
         let pharmacies =
@@ -2680,7 +2648,9 @@ async function loadDashboardPharmacies() {
 
             if (
                 pharmacies &&
-                Array.isArray(pharmacies.content)
+                Array.isArray(
+                    pharmacies.content
+                )
             ) {
 
                 pharmacies =
@@ -2689,7 +2659,9 @@ async function loadDashboardPharmacies() {
             } else {
 
                 pharmacies = [];
+
             }
+
         }
 
         console.log(
@@ -2706,53 +2678,72 @@ async function loadDashboardPharmacies() {
             error
         );
 
-        showToast(
-            "Error loading pharmacies.",
-            "danger"
-        );
+        if (
+            error.status === 401 ||
+            error.status === 403
+        ) {
+
+            showToast(
+                "You are not authorized to access pharmacies.",
+                "danger"
+            );
+
+        } else {
+
+            showToast(
+                "Error loading pharmacies.",
+                "danger"
+            );
+
+        }
 
         return [];
+
     }
+
 }
+
+
 
 // ============================================================
 // RENDER PHARMACY TABLE
 // ============================================================
 
-function renderPharmacyTable(pharmacies) {
+function renderPharmacyTable(
+    pharmacies = [],
+    owners = []
+) {
 
     const head =
-        document.getElementById(
-            "workspace-table-head"
-        );
+        $("#workspace-table-head");
 
     const body =
-        document.getElementById(
-            "workspace-table-body"
-        );
+        $("#workspace-table-body");
 
     const panelTitle =
-        document.getElementById(
-            "table-panel-title"
-        );
+        $("#table-panel-title");
 
-    if (!head || !body) {
+    if (
+        head.length === 0 ||
+        body.length === 0
+    ) {
 
         console.error(
             "Pharmacy table elements not found."
         );
 
         return;
+
     }
 
-    if (panelTitle) {
+    panelTitle.text(
+        "Registered Pharmacy Entities"
+    );
 
-        panelTitle.textContent =
-            "Registered Pharmacy Entities";
-    }
+    head.html(`
 
-    head.innerHTML = `
         <tr>
+
             <th>ID</th>
             <th>Corporate Name</th>
             <th>Reg Code</th>
@@ -2760,72 +2751,127 @@ function renderPharmacyTable(pharmacies) {
             <th>HQ Email</th>
             <th>Address</th>
             <th>City</th>
-        </tr>
-    `;
+            <th>Owner</th>
 
-    body.innerHTML = "";
+        </tr>
+
+    `);
+
+    body.empty();
 
     if (
         !Array.isArray(pharmacies) ||
         pharmacies.length === 0
     ) {
 
-        body.innerHTML = `
+        body.html(`
+
             <tr>
+
                 <td
-                    colspan="7"
+                    colspan="8"
                     style="
                         text-align:center;
                         padding:2.5rem;
                         color:var(--text-muted);
                     "
                 >
+
                     No pharmacies found.
+
                 </td>
+
             </tr>
-        `;
+
+        `);
 
         return;
+
     }
 
-    pharmacies.forEach(pharmacy => {
+    pharmacies.forEach(
+        function (pharmacy) {
 
-        const tr =
-            document.createElement("tr");
+            const owner =
+                owners.find(
+                    function (user) {
 
-        tr.innerHTML = `
-            <td>${pharmacy.id ?? "-"}</td>
+                        return String(
+                            user.id
+                        ) === String(
+                            pharmacy.ownerId
+                        );
 
-            <td>
-                <strong>
-                    ${pharmacy.name ?? "-"}
-                </strong>
-            </td>
+                    }
+                );
 
-            <td>
-                ${pharmacy.registrationNumber ?? "-"}
-            </td>
+            const ownerText =
+                owner
+                    ? `${owner.name} (${owner.email})`
+                    : "Unassigned";
 
-            <td>
-                ${pharmacy.phone ?? "-"}
-            </td>
+            const row = `
 
-            <td>
-                ${pharmacy.email ?? "-"}
-            </td>
+                <tr>
 
-            <td>
-                ${pharmacy.address ?? "-"}
-            </td>
+                    <td>
+                        ${pharmacy.id ?? "-"}
+                    </td>
 
-            <td>
-                ${pharmacy.city ?? "-"}
-            </td>
-        `;
+                    <td>
 
-        body.appendChild(tr);
-    });
+                        <strong>
+                            ${pharmacy.name ?? "-"}
+                        </strong>
+
+                    </td>
+
+                    <td>
+                        ${
+                pharmacy.registrationNumber
+                ?? "-"
+            }
+                    </td>
+
+                    <td>
+                        ${pharmacy.phone ?? "-"}
+                    </td>
+
+                    <td>
+                        ${pharmacy.email ?? "-"}
+                    </td>
+
+                    <td>
+                        ${pharmacy.address ?? "-"}
+                    </td>
+
+                    <td>
+                        ${pharmacy.city ?? "-"}
+                    </td>
+
+                    <td>
+
+                        <span class="badge badge-info">
+
+                            ${ownerText}
+
+                        </span>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+            body.append(row);
+
+        }
+    );
+
 }
+
+
+
 // ============================================================
 // PHARMACY STATISTICS
 // ============================================================
@@ -2835,12 +2881,14 @@ function renderPharmacyStats(
 ) {
 
     const statsContainer =
-        document.getElementById(
-            "workspace-stats"
-        );
+        $("#workspace-stats");
 
-    if (!statsContainer) {
+    if (
+        statsContainer.length === 0
+    ) {
+
         return;
+
     }
 
     const total =
@@ -2848,73 +2896,115 @@ function renderPharmacyStats(
             ? pharmacies.length
             : 0;
 
-    statsContainer.innerHTML = `
+    statsContainer.html(`
+
         <div class="glass-card stat-card animate-fade">
 
             <div class="stat-header">
 
                 <span class="stat-title">
+
                     Total Pharmacies
+
                 </span>
 
                 <div class="stat-icon">
+
                     PH
+
                 </div>
 
             </div>
 
             <div class="stat-val">
+
                 ${total}
+
             </div>
 
             <span class="stat-desc">
-                Pharmacy organizations loaded from database
+
+                Pharmacy organizations
+                loaded from database
+
             </span>
 
         </div>
-    `;
+
+    `);
+
 }
 
+
+
 // ============================================================
-// PHARMACY OWNERS
+// PHARMACY OWNERS - GET FROM BACKEND
 // ============================================================
 
 async function loadPharmacyOwners() {
 
     try {
 
-        const response =
-            await apiFetch(
-                "/v1/users",
-                "GET"
+        const token =
+            localStorage.getItem(
+                "medifind_token"
             );
 
+        // ----------------------------------------------------
+        // GET USERS
+        // ----------------------------------------------------
+
+        const usersResponse =
+            await $.ajax({
+
+                url:
+                    "http://localhost:8080/v1/users",
+
+                method:
+                    "GET",
+
+                headers: token
+                    ? {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                    : {},
+
+                dataType:
+                    "json"
+
+            });
+
         console.log(
-            "Pharmacy Owners API Response:",
-            response
+            "Pharmacy Users API Response:",
+            usersResponse
         );
 
         if (
-            !response ||
-            !response.success
+            !usersResponse ||
+            usersResponse.status !== 0
         ) {
 
-            console.error(
-                "Failed to load users:",
-                response?.message
+            showToast(
+                usersResponse?.message ||
+                "Cannot load users.",
+                "danger"
             );
 
             return [];
+
         }
 
         let users =
-            response.body;
+            usersResponse.body;
 
         if (!Array.isArray(users)) {
 
             if (
                 users &&
-                Array.isArray(users.content)
+                Array.isArray(
+                    users.content
+                )
             ) {
 
                 users =
@@ -2923,18 +3013,144 @@ async function loadPharmacyOwners() {
             } else {
 
                 users = [];
+
             }
+
         }
 
-        return users.filter(
-            user =>
-                String(
-                    user.role ||
-                    user.roleName ||
-                    ""
-                ).toUpperCase() ===
-                "PHARMACY_ADMIN"
+        // ----------------------------------------------------
+        // GET ROLES
+        // ----------------------------------------------------
+
+        const rolesResponse =
+            await $.ajax({
+
+                url:
+                    "http://localhost:8080/v1/roles",
+
+                method:
+                    "GET",
+
+                headers: token
+                    ? {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                    : {},
+
+                dataType:
+                    "json"
+
+            });
+
+        console.log(
+            "Roles API Response:",
+            rolesResponse
         );
+
+        if (
+            !rolesResponse ||
+            rolesResponse.status !== 0
+        ) {
+
+            showToast(
+                rolesResponse?.message ||
+                "Cannot load roles.",
+                "danger"
+            );
+
+            return [];
+
+        }
+
+        let roles =
+            rolesResponse.body;
+
+        if (!Array.isArray(roles)) {
+
+            if (
+                roles &&
+                Array.isArray(
+                    roles.content
+                )
+            ) {
+
+                roles =
+                    roles.content;
+
+            } else {
+
+                roles = [];
+
+            }
+
+        }
+
+        // ----------------------------------------------------
+        // FIND PHARMACY_ADMIN ROLE
+        // ----------------------------------------------------
+
+        const pharmacyAdminRole =
+            roles.find(
+                function (role) {
+
+                    const roleName =
+                        role.roleName ||
+                        role.name ||
+                        "";
+
+                    return String(
+                            roleName
+                        ).toUpperCase() ===
+                        "PHARMACY_ADMIN";
+
+                }
+            );
+
+        if (!pharmacyAdminRole) {
+
+            console.error(
+                "PHARMACY_ADMIN role not found.",
+                roles
+            );
+
+            showToast(
+                "PHARMACY_ADMIN role was not found.",
+                "danger"
+            );
+
+            return [];
+
+        }
+
+        console.log(
+            "PHARMACY_ADMIN Role:",
+            pharmacyAdminRole
+        );
+
+        // ----------------------------------------------------
+        // FILTER USERS BY ROLE ID
+        // ----------------------------------------------------
+
+        const owners =
+            users.filter(
+                function (user) {
+
+                    return String(
+                        user.roleId
+                    ) === String(
+                        pharmacyAdminRole.id
+                    );
+
+                }
+            );
+
+        console.log(
+            "Pharmacy Owners:",
+            owners
+        );
+
+        return owners;
 
     } catch (error) {
 
@@ -2943,9 +3159,32 @@ async function loadPharmacyOwners() {
             error
         );
 
+        if (
+            error.status === 401 ||
+            error.status === 403
+        ) {
+
+            showToast(
+                "You are not authorized to load pharmacy owners.",
+                "danger"
+            );
+
+        } else {
+
+            showToast(
+                "Error loading pharmacy owners.",
+                "danger"
+            );
+
+        }
+
         return [];
+
     }
+
 }
+
+
 
 // ============================================================
 // OPEN PHARMACY MODAL
@@ -2953,128 +3192,187 @@ async function loadPharmacyOwners() {
 
 async function openPharmacyModal() {
 
-    const ownerDrop =
-        document.getElementById(
-            "pharmacy-owner"
-        );
+    // --------------------------------------------------------
+    // RESET FORM
+    // --------------------------------------------------------
 
-    if (!ownerDrop) {
+    $("#pharmacy-edit-id").val("");
+
+    $("#pharmacy-name").val("");
+
+    $("#pharmacy-reg").val("");
+
+    $("#pharmacy-phone").val("");
+
+    $("#pharmacy-email").val("");
+
+    $("#pharmacy-address").val("");
+
+    $("#pharmacy-city").val("");
+
+    // --------------------------------------------------------
+    // OWNER DROPDOWN
+    // --------------------------------------------------------
+
+    const ownerDrop =
+        $("#pharmacy-owner");
+
+    if (
+        ownerDrop.length === 0
+    ) {
 
         console.error(
             "pharmacy-owner element not found."
         );
 
         return;
+
     }
 
-    ownerDrop.innerHTML = `
+    ownerDrop.html(`
+
         <option value="">
+
             Loading pharmacy owners...
+
         </option>
-    `;
 
-    const owners =
-        await loadPharmacyOwners();
+    `);
 
-    ownerDrop.innerHTML = `
-        <option value="">
-            Select Pharmacy Owner
-        </option>
-    `;
+    // --------------------------------------------------------
+    // MODAL TITLE
+    // --------------------------------------------------------
 
-    owners.forEach(owner => {
+    $("#pharmacy-modal-title")
+        .text(
+            "Register Pharmacy"
+        );
 
-        const option =
-            document.createElement("option");
-
-        option.value =
-            owner.id;
-
-        option.textContent =
-            `${owner.name} (${owner.email})`;
-
-        ownerDrop.appendChild(option);
-    });
-
-    if (owners.length === 0) {
-
-        ownerDrop.innerHTML = `
-            <option value="">
-                No Pharmacy Admin users found
-            </option>
-        `;
-    }
+    // --------------------------------------------------------
+    // OPEN MODAL
+    // --------------------------------------------------------
 
     openModal(
         "pharmacy-modal"
     );
+
+    // --------------------------------------------------------
+    // LOAD OWNERS
+    // --------------------------------------------------------
+
+    const owners =
+        await loadPharmacyOwners();
+
+    ownerDrop.html(`
+
+        <option value="">
+
+            Select Pharmacy Owner
+
+        </option>
+
+    `);
+
+    // --------------------------------------------------------
+    // NO OWNERS
+    // --------------------------------------------------------
+
+    if (
+        owners.length === 0
+    ) {
+
+        ownerDrop.html(`
+
+            <option value="">
+
+                No Pharmacy Admin users found
+
+            </option>
+
+        `);
+
+        return;
+
+    }
+
+    // --------------------------------------------------------
+    // POPULATE OWNERS
+    // --------------------------------------------------------
+
+    owners.forEach(
+        function (owner) {
+
+            ownerDrop.append(`
+
+                <option
+                    value="${owner.id}"
+                >
+
+                    ${owner.name}
+                    (${owner.email})
+
+                </option>
+
+            `);
+
+        }
+    );
+
 }
 
+
+
 // ============================================================
-// SAVE PHARMACY
+// SAVE PHARMACY - CREATE / UPDATE
 // ============================================================
 
 async function savePharmacy() {
 
-    const nameInput =
-        document.getElementById(
-            "pharmacy-name"
-        );
-
-    const regInput =
-        document.getElementById(
-            "pharmacy-reg"
-        );
-
-    const phoneInput =
-        document.getElementById(
-            "pharmacy-phone"
-        );
-
-    const emailInput =
-        document.getElementById(
-            "pharmacy-email"
-        );
-
-    const ownerInput =
-        document.getElementById(
-            "pharmacy-owner"
-        );
-
-    const editInput =
-        document.getElementById(
-            "pharmacy-edit-id"
-        );
+    // --------------------------------------------------------
+    // READ INPUTS
+    // --------------------------------------------------------
 
     const name =
-        nameInput
-            ? nameInput.value.trim()
-            : "";
+        $.trim(
+            $("#pharmacy-name").val()
+        );
 
     const registrationNumber =
-        regInput
-            ? regInput.value.trim()
-            : "";
+        $.trim(
+            $("#pharmacy-reg").val()
+        );
 
     const phone =
-        phoneInput
-            ? phoneInput.value.trim()
-            : "";
+        $.trim(
+            $("#pharmacy-phone").val()
+        );
 
     const email =
-        emailInput
-            ? emailInput.value.trim()
-            : "";
+        $.trim(
+            $("#pharmacy-email").val()
+        );
 
-    const ownerId =
-        ownerInput
-            ? ownerInput.value
-            : "";
+    const address =
+        $.trim(
+            $("#pharmacy-address").val()
+        );
+
+    const city =
+        $.trim(
+            $("#pharmacy-city").val()
+        );
+
+    const ownerValue =
+        $("#pharmacy-owner").val();
 
     const editId =
-        editInput
-            ? editInput.value.trim()
-            : "";
+        $.trim(
+            $("#pharmacy-edit-id").val()
+        );
+
+    // --------------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------------
 
     if (!name) {
 
@@ -3083,25 +3381,101 @@ async function savePharmacy() {
             "warning"
         );
 
+        $("#pharmacy-name").focus();
+
         return;
+
     }
+
+    if (!registrationNumber) {
+
+        showToast(
+            "Registration number is required.",
+            "warning"
+        );
+
+        $("#pharmacy-reg").focus();
+
+        return;
+
+    }
+
+    if (!address) {
+
+        showToast(
+            "Pharmacy address is required.",
+            "warning"
+        );
+
+        $("#pharmacy-address").focus();
+
+        return;
+
+    }
+
+    if (!city) {
+
+        showToast(
+            "Pharmacy city is required.",
+            "warning"
+        );
+
+        $("#pharmacy-city").focus();
+
+        return;
+
+    }
+
+    if (!ownerValue) {
+
+        showToast(
+            "Please select a pharmacy owner.",
+            "warning"
+        );
+
+        $("#pharmacy-owner").focus();
+
+        return;
+
+    }
+
+    // --------------------------------------------------------
+    // REQUEST PAYLOAD
+    // --------------------------------------------------------
 
     const payload = {
 
-        name: name,
+        name:
+        name,
 
         registrationNumber:
         registrationNumber,
 
-        phone: phone,
+        phone:
+        phone,
 
-        email: email,
+        email:
+        email,
+
+        address:
+        address,
+
+        city:
+        city,
 
         ownerId:
-            ownerId
-                ? Number(ownerId)
-                : null
+            Number(ownerValue)
+
     };
+
+    console.log(
+        "Pharmacy Request Payload:",
+        payload
+    );
+
+    // --------------------------------------------------------
+    // CREATE / UPDATE
+    // --------------------------------------------------------
 
     const isEdit =
         Boolean(editId);
@@ -3125,12 +3499,40 @@ async function savePharmacy() {
 
     try {
 
-        const response =
-            await apiFetch(
-                endpoint,
-                method,
-                payload
+        const token =
+            localStorage.getItem(
+                "medifind_token"
             );
+
+        const response =
+            await $.ajax({
+
+                url:
+                    "http://localhost:8080"
+                    + endpoint,
+
+                method:
+                method,
+
+                contentType:
+                    "application/json",
+
+                headers: token
+                    ? {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                    : {},
+
+                data:
+                    JSON.stringify(
+                        payload
+                    ),
+
+                dataType:
+                    "json"
+
+            });
 
         console.log(
             "Save Pharmacy Response:",
@@ -3139,7 +3541,7 @@ async function savePharmacy() {
 
         if (
             !response ||
-            !response.success
+            response.status !== 0
         ) {
 
             showToast(
@@ -3149,6 +3551,7 @@ async function savePharmacy() {
             );
 
             return;
+
         }
 
         showToast(
@@ -3173,12 +3576,21 @@ async function savePharmacy() {
             error
         );
 
+        const message =
+            error.responseJSON?.message ||
+            error.responseJSON?.error ||
+            "Error saving pharmacy.";
+
         showToast(
-            "Error saving pharmacy.",
+            message,
             "danger"
         );
+
     }
+
 }
+
+
 
 // ============================================================
 // EDIT PHARMACY
@@ -3193,15 +3605,44 @@ async function editPharmacy(id) {
 
     try {
 
-        const response =
-            await apiFetch(
-                `/v1/pharmacies/${id}`,
-                "GET"
+        const token =
+            localStorage.getItem(
+                "medifind_token"
             );
+
+        // ----------------------------------------------------
+        // GET PHARMACY
+        // ----------------------------------------------------
+
+        const response =
+            await $.ajax({
+
+                url:
+                    `http://localhost:8080/v1/pharmacies/${id}`,
+
+                method:
+                    "GET",
+
+                headers: token
+                    ? {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                    : {},
+
+                dataType:
+                    "json"
+
+            });
+
+        console.log(
+            "Edit Pharmacy Response:",
+            response
+        );
 
         if (
             !response ||
-            !response.success
+            response.status !== 0
         ) {
 
             showToast(
@@ -3211,6 +3652,7 @@ async function editPharmacy(id) {
             );
 
             return;
+
         }
 
         const pharmacy =
@@ -3224,50 +3666,121 @@ async function editPharmacy(id) {
             );
 
             return;
+
         }
 
-        await openPharmacyModal();
+        // ----------------------------------------------------
+        // LOAD OWNERS
+        // ----------------------------------------------------
 
-        document.getElementById(
-            "pharmacy-edit-id"
-        ).value =
-            pharmacy.id;
+        const owners =
+            await loadPharmacyOwners();
 
-        document.getElementById(
-            "pharmacy-name"
-        ).value =
-            pharmacy.name || "";
+        const ownerDrop =
+            $("#pharmacy-owner");
 
-        document.getElementById(
-            "pharmacy-reg"
-        ).value =
-            pharmacy.registrationNumber || "";
+        ownerDrop.html(`
 
-        document.getElementById(
-            "pharmacy-phone"
-        ).value =
-            pharmacy.phone || "";
+            <option value="">
 
-        document.getElementById(
-            "pharmacy-email"
-        ).value =
-            pharmacy.email || "";
+                Select Pharmacy Owner
 
-        document.getElementById(
-            "pharmacy-owner"
-        ).value =
-            pharmacy.ownerId || "";
+            </option>
 
-        const title =
-            document.getElementById(
-                "pharmacy-modal-title"
+        `);
+
+        owners.forEach(
+            function (owner) {
+
+                ownerDrop.append(`
+
+                    <option
+                        value="${owner.id}"
+                    >
+
+                        ${owner.name}
+                        (${owner.email})
+
+                    </option>
+
+                `);
+
+            }
+        );
+
+        // ----------------------------------------------------
+        // FILL FORM
+        // ----------------------------------------------------
+
+        $("#pharmacy-edit-id")
+            .val(
+                pharmacy.id || ""
             );
 
-        if (title) {
+        $("#pharmacy-name")
+            .val(
+                pharmacy.name || ""
+            );
 
-            title.textContent =
-                "Edit Pharmacy";
+        $("#pharmacy-reg")
+            .val(
+                pharmacy.registrationNumber
+                || ""
+            );
+
+        $("#pharmacy-phone")
+            .val(
+                pharmacy.phone || ""
+            );
+
+        $("#pharmacy-email")
+            .val(
+                pharmacy.email || ""
+            );
+
+        $("#pharmacy-address")
+            .val(
+                pharmacy.address || ""
+            );
+
+        $("#pharmacy-city")
+            .val(
+                pharmacy.city || ""
+            );
+
+        if (
+            pharmacy.ownerId !== null &&
+            pharmacy.ownerId !== undefined
+        ) {
+
+            ownerDrop.val(
+                String(
+                    pharmacy.ownerId
+                )
+            );
+
+        } else {
+
+            ownerDrop.val("");
+
         }
+
+        // ----------------------------------------------------
+        // MODAL TITLE
+        // ----------------------------------------------------
+
+        $("#pharmacy-modal-title")
+            .text(
+                "Edit Pharmacy"
+            );
+
+        // ----------------------------------------------------
+        // OPEN MODAL
+        // ----------------------------------------------------
+
+        openModal(
+            "pharmacy-modal"
+        );
 
     } catch (error) {
 
@@ -3276,12 +3789,21 @@ async function editPharmacy(id) {
             error
         );
 
+        const message =
+            error.responseJSON?.message ||
+            error.responseJSON?.error ||
+            "Error loading pharmacy.";
+
         showToast(
-            "Error loading pharmacy.",
+            message,
             "danger"
         );
+
     }
+
 }
+
+
 
 // ============================================================
 // DELETE PHARMACY
@@ -3296,6 +3818,7 @@ async function deletePharmacy(id) {
     ) {
 
         return;
+
     }
 
     showToast(
@@ -3305,15 +3828,40 @@ async function deletePharmacy(id) {
 
     try {
 
-        const response =
-            await apiFetch(
-                `/v1/pharmacies/${id}`,
-                "DELETE"
+        const token =
+            localStorage.getItem(
+                "medifind_token"
             );
+
+        const response =
+            await $.ajax({
+
+                url:
+                    `http://localhost:8080/v1/pharmacies/${id}`,
+
+                method:
+                    "DELETE",
+
+                headers: token
+                    ? {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                    : {},
+
+                dataType:
+                    "json"
+
+            });
+
+        console.log(
+            "Delete Pharmacy Response:",
+            response
+        );
 
         if (
             !response ||
-            !response.success
+            response.status !== 0
         ) {
 
             showToast(
@@ -3323,6 +3871,7 @@ async function deletePharmacy(id) {
             );
 
             return;
+
         }
 
         showToast(
@@ -3341,14 +3890,19 @@ async function deletePharmacy(id) {
             error
         );
 
+        const message =
+            error.responseJSON?.message ||
+            error.responseJSON?.error ||
+            "Error deleting pharmacy.";
+
         showToast(
-            "Error deleting pharmacy.",
+            message,
             "danger"
         );
+
     }
+
 }
-
-
 // ============================================================
 // PHARMACY BRANCH - GET ALL
 // ============================================================

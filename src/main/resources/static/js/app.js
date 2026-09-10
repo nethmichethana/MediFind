@@ -49,12 +49,8 @@ function apiFetch(
     body = null
 ) {
 
-    const token =
-        localStorage.getItem("medifind_token");
-
-    const headers = {
-        "Content-Type": "application/json"
-    };
+    const token = localStorage.getItem("medifind_token");
+    const headers = {"Content-Type": "application/json"};
 
     // Add JWT token when available
     if (token) {
@@ -807,11 +803,9 @@ async function performLogin(
 
         return;
     }
-
-
-    // --------------------------------------------------------
-    // JWT Token
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// JWT Token
+// --------------------------------------------------------
 
     const token =
         loginData.token;
@@ -833,9 +827,54 @@ async function performLogin(
     }
 
 
-    // --------------------------------------------------------
-    // Create Session User
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// GET USER ROLE FIRST
+// --------------------------------------------------------
+
+    const role =
+        (loginData.role || "")
+            .toString()
+            .trim()
+            .toUpperCase();
+
+
+// --------------------------------------------------------
+// CUSTOMER LOGIN PAGE
+// ONLY CUSTOMER IS ALLOWED
+// --------------------------------------------------------
+
+    if (role !== "CUSTOMER") {
+
+        console.warn(
+            "Non-customer login attempt:",
+            role
+        );
+
+        // Do NOT save admin/staff JWT
+        localStorage.removeItem(
+            "medifind_token"
+        );
+
+        localStorage.removeItem(
+            "medifind_session"
+        );
+
+        appState.currentUser = null;
+
+        updateAuthUI();
+
+        showToast(
+            "This login is only available for customers.",
+            "danger"
+        );
+
+        return;
+    }
+
+
+// --------------------------------------------------------
+// CREATE CUSTOMER SESSION
+// --------------------------------------------------------
 
     const user = {
 
@@ -849,13 +888,13 @@ async function performLogin(
         loginData.email,
 
         role:
-        loginData.role
+        role
     };
 
 
-    // --------------------------------------------------------
-    // Save JWT
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// SAVE CUSTOMER JWT
+// --------------------------------------------------------
 
     localStorage.setItem(
         "medifind_token",
@@ -863,9 +902,9 @@ async function performLogin(
     );
 
 
-    // --------------------------------------------------------
-    // Save Session
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// SAVE CUSTOMER SESSION
+// --------------------------------------------------------
 
     localStorage.setItem(
         "medifind_session",
@@ -873,26 +912,24 @@ async function performLogin(
     );
 
 
-    // --------------------------------------------------------
-    // Update State
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// UPDATE APPLICATION STATE
+// --------------------------------------------------------
 
     appState.currentUser =
         user;
 
 
+// --------------------------------------------------------
+// UPDATE AUTH UI
+// --------------------------------------------------------
+
     updateAuthUI();
 
 
-    console.log(
-        "Logged-in User:",
-        user
-    );
-
-
-    // --------------------------------------------------------
-    // Close Login Modal
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// CLOSE LOGIN MODAL
+// --------------------------------------------------------
 
     if (isModal) {
 
@@ -902,9 +939,9 @@ async function performLogin(
     }
 
 
-    // --------------------------------------------------------
-    // Login Success
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// CUSTOMER LOGIN SUCCESS
+// --------------------------------------------------------
 
     showToast(
         `Welcome back, ${user.name || user.email}!`,
@@ -912,46 +949,18 @@ async function performLogin(
     );
 
 
-    // --------------------------------------------------------
-    // Role Navigation
-    // --------------------------------------------------------
+// --------------------------------------------------------
+// CUSTOMER PAGE ONLY
+// --------------------------------------------------------
 
-    const role =
-        (user.role || "")
-            .toUpperCase();
+    showSection(
+        "catalog"
+    );
+
+    renderCustomerReservations();
 
 
-    if (
-        role === "ADMIN" ||
-        role === "PHARMACY_ADMIN" ||
-        role === "PHARMACY_STAFF"
-    ) {
-
-        setTimeout(
-            function () {
-
-                window.location.href =
-                    "dashboard.html";
-
-            },
-            700
-        );
-
-    } else {
-
-        setTimeout(
-            function () {
-
-                showSection(
-                    "catalog"
-                );
-
-            },
-            700
-        );
-    }
-
-} // ⭐ IMPORTANT: performLogin CLOSES HERE
+}
 
 
 // ============================================================
