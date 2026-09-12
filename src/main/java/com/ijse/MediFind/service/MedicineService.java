@@ -13,6 +13,8 @@ public interface MedicineService {
 
     List<MedicineResDTO> getAllMedicines();
 
+    List<MedicineResDTO> filterMedicines(Long categoryId, String search);
+
     MedicineResDTO updateMedicine(Long id, MedicineReqDTO medicineReqDTO);
 
     void deleteMedicine(Long id);

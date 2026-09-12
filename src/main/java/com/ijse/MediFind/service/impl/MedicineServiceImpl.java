@@ -208,4 +208,27 @@ public class MedicineServiceImpl implements MedicineService {
 
         medicineRepository.delete(medicine);
     }
+
+    @Override
+    public List<MedicineResDTO> filterMedicines(Long categoryId, String search) {
+        String querySearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        List<Medicine> medicines = medicineRepository.filterMedicines(categoryId, querySearch);
+
+        return medicines.stream().map(medicine ->
+                MedicineResDTO.builder()
+                        .id(medicine.getId())
+                        .name(medicine.getName())
+                        .genericName(medicine.getGenericName())
+                        .brandName(medicine.getBrandName())
+                        .dosageForm(medicine.getDosageForm())
+                        .strength(medicine.getStrength())
+                        .description(medicine.getDescription())
+                        .categoryId(medicine.getCategory() != null ? medicine.getCategory().getId() : null)
+                        .prescriptionRequired(medicine.getPrescriptionRequired())
+                        .active(medicine.getActive())
+                        .createdAt(medicine.getCreatedAt())
+                        .updatedAt(medicine.getUpdatedAt())
+                        .build()
+        ).toList();
+    }
 }

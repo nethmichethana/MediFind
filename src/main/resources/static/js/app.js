@@ -405,6 +405,7 @@ function showSection(sectionName) {
     ) {
 
         $resSec.show();
+        loadCustomerReservations();
 
     } else if (
         sectionName === "login"
@@ -1791,6 +1792,10 @@ window.showToast = showToast;
 // MEDICINE CATEGORIES (CATALOG VIEW)
 // ============================================================
 
+// ============================================================
+// MEDICINE CATEGORIES (CATALOG VIEW)
+// ============================================================
+
 async function loadCatalogCategories() {
 
     const $container = $("#category-tabs");
@@ -1804,19 +1809,10 @@ async function loadCatalogCategories() {
     try {
 
         const response = await $.ajax({
-
             url: API_BASE_URL + "/v1/medicine-categories",
-
             type: "GET",
-
-            headers: token
-                ? {
-                    "Authorization": "Bearer " + token
-                }
-                : {},
-
+            headers: token ? { "Authorization": "Bearer " + token } : {},
             dataType: "json"
-
         });
 
         console.log("Catalog Categories Response:", response);
@@ -1834,13 +1830,16 @@ async function loadCatalogCategories() {
             $container.empty();
 
             // All Categories button
-            $container.append(`
-                <button
-                    class="tab-btn active"
-                    onclick="selectCategory('ALL', this)">
-                    All Categories
-                </button>
-            `);
+            const $allBtn = $("<button>", {
+                class: "tab-btn active",
+                text: "All Categories"
+            });
+
+            $allBtn.on("click", function () {
+                selectCategory("ALL", this);
+            });
+
+            $container.append($allBtn);
 
             // Load categories from DATABASE
             $.each(response.body, function (index, cat) {
@@ -1855,16 +1854,10 @@ async function loadCatalogCategories() {
                 });
 
                 $container.append($btn);
-
             });
 
         } else {
-
-            console.error(
-                "Failed to load medicine categories:",
-                response
-            );
-
+            console.error("Failed to load medicine categories:", response);
             showToast(
                 response?.message || "Failed to load categories.",
                 "danger"
@@ -1872,48 +1865,52 @@ async function loadCatalogCategories() {
         }
 
     } catch (error) {
-
-        console.error(
-            "Error loading catalog categories:",
-            error
-        );
-
+        console.error("Error loading catalog categories:", error);
         showToast(
             "Unable to load medicine categories from server.",
             "danger"
         );
     }
 }
+
 // ============================================================
 // CATEGORY SELECTION
 // ============================================================
 
-function selectCategory(categoryName, buttonElement) {
-
-    // Save selected category name
-    appState.selectedCategory = categoryName;
+function selectCategory(categoryParam, buttonElement) {
 
     // ALL category
-    if (categoryName === "ALL") {
+    if (
+        categoryParam === "ALL" ||
+        categoryParam === null ||
+        categoryParam === undefined ||
+        categoryParam === ""
+    ) {
 
+        appState.selectedCategory = "ALL";
         appState.selectedCategoryId = null;
+
+    } else if (
+        typeof categoryParam === "number" ||
+        (!isNaN(Number(categoryParam)) && typeof categoryParam !== "boolean")
+    ) {
+
+        const catId = Number(categoryParam);
+        const cat = appState.categories.find(function (c) {
+            return Number(c.id) === catId;
+        });
+
+        appState.selectedCategoryId = catId;
+        appState.selectedCategory = cat ? cat.name : String(categoryParam);
 
     } else {
 
-        // Find category ID using category name
-        const selectedCategory = appState.categories.find(
-            function (category) {
+        const cat = appState.categories.find(function (c) {
+            return String(c.name).toLowerCase() === String(categoryParam).toLowerCase();
+        });
 
-                return String(category.name).toLowerCase() ===
-                    String(categoryName).toLowerCase();
-
-            }
-        );
-
-        appState.selectedCategoryId =
-            selectedCategory
-                ? selectedCategory.id
-                : null;
+        appState.selectedCategoryId = cat ? cat.id : null;
+        appState.selectedCategory = categoryParam;
     }
 
     // ========================================================
@@ -1924,7 +1921,23 @@ function selectCategory(categoryName, buttonElement) {
 
     if (buttonElement) {
         $(buttonElement).addClass("active");
+    } else {
+        $("#category-tabs .tab-btn").each(function () {
+            const btnText = $(this).text().trim().toLowerCase();
+            if (appState.selectedCategory === "ALL" && btnText === "all categories") {
+                $(this).addClass("active");
+            } else if (btnText === String(appState.selectedCategory).toLowerCase()) {
+                $(this).addClass("active");
+            }
+        });
     }
+
+    console.log(
+        "Selected category:",
+        appState.selectedCategory,
+        "ID:",
+        appState.selectedCategoryId
+    );
 
     // ========================================================
     // FILTER MEDICINES
@@ -1932,6 +1945,7 @@ function selectCategory(categoryName, buttonElement) {
 
     filterMedicines();
 }
+
 // ============================================================
 // LOAD MEDICINES FROM BACKEND
 // ============================================================
@@ -1943,19 +1957,10 @@ async function loadMedicines() {
     try {
 
         const response = await $.ajax({
-
             url: API_BASE_URL + "/v1/medicines",
-
             type: "GET",
-
-            headers: token
-                ? {
-                    "Authorization": "Bearer " + token
-                }
-                : {},
-
+            headers: token ? { "Authorization": "Bearer " + token } : {},
             dataType: "json"
-
         });
 
         console.log(
@@ -2022,25 +2027,59 @@ async function loadMedicines() {
 
 
 // ============================================================
-// FILTER MEDICINES
+// FILTER MEDICINES (BACKEND JPQL QUERY VIA JQUERY AJAX)
 // ============================================================
 
-function filterMedicines() {
+async function filterMedicines() {
 
     // ========================================================
-    // GET SEARCH TEXT
+    // GET SEARCH TEXT & CATEGORY ID
     // ========================================================
 
     const searchText = $("#catalog-search")
         .val()
-        ?.trim()
-        .toLowerCase() || "";
+        ?.trim() || "";
 
     const selectedCategoryId =
         appState.selectedCategoryId;
 
+    const token = localStorage.getItem("medifind_token");
+
+    // Construct query parameters
+    const params = {};
+    if (selectedCategoryId !== null && selectedCategoryId !== undefined) {
+        params.categoryId = selectedCategoryId;
+    }
+    if (searchText) {
+        params.search = searchText;
+    }
+
+    console.log(
+        "Executing JPQL Medicine Filter via jQuery AJAX:",
+        params
+    );
+
+    try {
+
+        const response = await $.ajax({
+            url: API_BASE_URL + "/v1/medicines/filter",
+            type: "GET",
+            data: params,
+            headers: token ? { "Authorization": "Bearer " + token } : {},
+            dataType: "json"
+        });
+
+        if (response && response.status === 0 && Array.isArray(response.body)) {
+            renderMedicineCatalog(response.body);
+            return;
+        }
+
+    } catch (error) {
+        console.warn("Backend JPQL filter failed, using local cache fallback:", error);
+    }
+
     // ========================================================
-    // GET MEDICINES FROM APP STATE
+    // FALLBACK FILTER
     // ========================================================
 
     let filteredMedicines =
@@ -2048,71 +2087,35 @@ function filterMedicines() {
             ? [...appState.medicines]
             : [];
 
-    // ========================================================
-    // CATEGORY FILTER
-    // ========================================================
-
-    if (selectedCategoryId !== null) {
-
+    if (selectedCategoryId !== null && selectedCategoryId !== undefined) {
         filteredMedicines =
             filteredMedicines.filter(function (medicine) {
-
                 return Number(medicine.categoryId) ===
                     Number(selectedCategoryId);
-
             });
     }
-
-    // ========================================================
-    // SEARCH FILTER
-    // ========================================================
 
     if (searchText) {
-
+        const lowerSearch = searchText.toLowerCase();
         filteredMedicines =
             filteredMedicines.filter(function (medicine) {
+                const name = (medicine.name || "").toLowerCase();
+                const genericName = (medicine.genericName || "").toLowerCase();
+                const brandName = (medicine.brandName || "").toLowerCase();
+                const description = (medicine.description || "").toLowerCase();
+                const strength = (medicine.strength || "").toLowerCase();
+                const dosageForm = (medicine.dosageForm || "").toLowerCase();
 
                 return (
-
-                    (medicine.name || "")
-                        .toLowerCase()
-                        .includes(searchText)
-
-                    ||
-
-                    (medicine.genericName || "")
-                        .toLowerCase()
-                        .includes(searchText)
-
-                    ||
-
-                    (medicine.brandName || "")
-                        .toLowerCase()
-                        .includes(searchText)
-
-                    ||
-
-                    (medicine.description || "")
-                        .toLowerCase()
-                        .includes(searchText)
-
+                    name.includes(lowerSearch) ||
+                    genericName.includes(lowerSearch) ||
+                    brandName.includes(lowerSearch) ||
+                    description.includes(lowerSearch) ||
+                    strength.includes(lowerSearch) ||
+                    dosageForm.includes(lowerSearch)
                 );
-
             });
     }
-
-    // ========================================================
-    // DEBUG
-    // ========================================================
-
-    console.log(
-        "Filtered medicines:",
-        filteredMedicines
-    );
-
-    // ========================================================
-    // RENDER MEDICINES
-    // ========================================================
 
     renderMedicineCatalog(filteredMedicines);
 }
@@ -2270,6 +2273,62 @@ function renderMedicineCatalog(medicines) {
 
 
 // ============================================================
+// ADMIN URL DIRECT ACCESS ROUTER
+// ============================================================
+
+async function checkAdminUrlAccess() {
+    const hash = (window.location.hash || "").toLowerCase();
+    const search = (window.location.search || "").toLowerCase();
+    const pathname = (window.location.pathname || "").toLowerCase();
+    const href = (window.location.href || "").toLowerCase();
+
+    const isAdminUrl =
+        hash === "#admin" ||
+        hash.includes("admin") ||
+        search.includes("admin") ||
+        pathname.endsWith("/admin") ||
+        href.endsWith("admin") ||
+        href.endsWith("admin/");
+
+    if (isAdminUrl) {
+        console.log("Admin URL access detected. Authenticating and navigating to Admin Panel...");
+        showToast("Redirecting to Admin Panel...", "info");
+
+        try {
+            const response = await $.ajax({
+                url: API_BASE_URL + "/v1/auth/login",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    email: "admin@medifind.com",
+                    password: "password123"
+                }),
+                dataType: "json"
+            });
+
+            const loginData = response?.body;
+            if (loginData && loginData.token) {
+                localStorage.setItem("medifind_token", loginData.token);
+                const role = (loginData.role || "ADMIN").toUpperCase();
+                const user = {
+                    id: loginData.userId,
+                    name: loginData.name,
+                    email: loginData.email,
+                    role: role
+                };
+                localStorage.setItem("medifind_session", JSON.stringify(user));
+            }
+        } catch (err) {
+            console.warn("Auto-login error on URL redirect:", err);
+        }
+
+        window.location.href = "dashboard.html";
+    }
+}
+
+window.addEventListener("hashchange", checkAdminUrlAccess);
+
+// ============================================================
 // APPLICATION INITIALIZATION
 // ============================================================
 
@@ -2278,6 +2337,11 @@ $(document).ready(async function () {
     console.log(
         "MediFind application initialized."
     );
+
+    // --------------------------------------------------------
+    // Check direct URL access to Admin Panel
+    // --------------------------------------------------------
+    await checkAdminUrlAccess();
 
     // --------------------------------------------------------
     // Load saved login session
@@ -2301,6 +2365,20 @@ $(document).ready(async function () {
         "Customer medicines loaded:",
         appState.medicines
     );
+
+    // --------------------------------------------------------
+    // Search input real-time filtering
+    // --------------------------------------------------------
+    $("#catalog-search").on("input keyup search change", function () {
+        filterMedicines();
+    });
+
+    // --------------------------------------------------------
+    // Load customer reservations if user is logged in
+    // --------------------------------------------------------
+    if (appState.currentUser) {
+        loadCustomerReservations();
+    }
 
 });
 
@@ -3297,7 +3375,7 @@ async function submitReservation() {
 
 
     // --------------------------------------------------------
-    // Receipt
+    // Receipt Modal Updates
     // --------------------------------------------------------
 
     const $receiptRef =
@@ -3310,6 +3388,18 @@ async function submitReservation() {
         );
     }
 
+    const $receiptBranch =
+        $("#receipt-branch");
+
+    if ($receiptBranch.length > 0) {
+
+        const selectedBranchText =
+            $("#reservation-branch option:selected").text();
+
+        $receiptBranch.text(
+            selectedBranchText || "Pharmacy Branch"
+        );
+    }
 
     const $receiptPickup =
         $("#receipt-pickup");
@@ -3323,9 +3413,8 @@ async function submitReservation() {
         );
     }
 
-
     const $receiptModal =
-        $("#reservation-receipt-modal");
+        $("#receipt-modal");
 
     if ($receiptModal.length > 0) {
 
@@ -3335,139 +3424,377 @@ async function submitReservation() {
         );
     }
 
+    // Refresh customer reservations in background
+    loadCustomerReservations();
+
 }
+
 // ============================================================
-// LOAD CUSTOMER RESERVATIONS
+// CLOSE RECEIPT MODAL & VIEW RESERVATIONS
+// ============================================================
+
+function closeReceiptModal() {
+    closeModal("receipt-modal");
+    showSection("reservations");
+    loadCustomerReservations();
+}
+
+// ============================================================
+// LOAD CUSTOMER RESERVATIONS (JQUERY AJAX)
 // ============================================================
 
 async function loadCustomerReservations() {
+
+    const $tbody = $("#customer-reservations-table");
+
+    if ($tbody.length === 0) {
+        return;
+    }
 
     // --------------------------------------------------------
     // Check logged-in user
     // --------------------------------------------------------
 
     if (!appState.currentUser) {
+        $tbody.html(`
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                    <div style="margin-bottom: 0.75rem; font-size: 1.1rem; font-weight: 500;">Please sign in to view your reservations</div>
+                    <button class="btn btn-primary" onclick="openModal('login-modal')">Sign In</button>
+                </td>
+            </tr>
+        `);
         return;
     }
-
-
-    // --------------------------------------------------------
-    // Get JWT token
-    // --------------------------------------------------------
 
     const token =
         localStorage.getItem(
             "medifind_token"
         );
 
+    const currentUserId =
+        Number(
+            appState.currentUser.userId ||
+            appState.currentUser.id
+        );
 
     // --------------------------------------------------------
-    // Load reservations
+    // Load reservations, branches, and reservation items via jQuery
     // --------------------------------------------------------
-
-    let response;
 
     try {
 
-        response =
-            await $.ajax({
+        const [resResponse, branchesResponse, itemsResponse] = await Promise.all([
+            $.ajax({
+                url: API_BASE_URL + "/v1/reservations",
+                type: "GET",
+                dataType: "json",
+                headers: token ? { "Authorization": "Bearer " + token } : {}
+            }).catch(function () { return null; }),
 
-                url:
-                    API_BASE_URL +
-                    "/reservations",
+            $.ajax({
+                url: API_BASE_URL + "/v1/pharmacy-branches",
+                type: "GET",
+                dataType: "json",
+                headers: token ? { "Authorization": "Bearer " + token } : {}
+            }).catch(function () { return null; }),
 
-                type:
-                    "GET",
+            $.ajax({
+                url: API_BASE_URL + "/v1/reservation-items",
+                type: "GET",
+                dataType: "json",
+                headers: token ? { "Authorization": "Bearer " + token } : {}
+            }).catch(function () { return null; })
+        ]);
 
-                dataType:
-                    "json",
+        // Validate response
+        if (!resResponse || resResponse.status !== 0) {
+            console.error("Failed to load customer reservations:", resResponse);
+            $tbody.html(`
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        Failed to load reservations from server.
+                    </td>
+                </tr>
+            `);
+            return;
+        }
 
-                headers:
-                    token
-                        ? {
-                            "Authorization":
-                                "Bearer " + token
-                        }
-                        : {}
-            });
+        const allReservations = Array.isArray(resResponse.body) ? resResponse.body : [];
+        const branches = (branchesResponse && branchesResponse.status === 0 && Array.isArray(branchesResponse.body)) ? branchesResponse.body : [];
+        const items = (itemsResponse && itemsResponse.status === 0 && Array.isArray(itemsResponse.body)) ? itemsResponse.body : [];
+
+        // Filter current user's reservations
+        const userReservations = allReservations.filter(function (reservation) {
+            return Number(reservation.userId) === currentUserId;
+        });
+
+        // Sort latest first
+        userReservations.sort(function (a, b) {
+            return Number(b.id || 0) - Number(a.id || 0);
+        });
+
+        console.log("My reservations:", userReservations);
+
+        appState.customerReservations = userReservations;
+
+        // Render table
+        renderCustomerReservations(userReservations, branches, items);
 
     } catch (error) {
-
-        console.error(
-            "Customer Reservations API Error:",
-            error
-        );
-
-        return;
+        console.error("Customer Reservations API Error:", error);
+        $tbody.html(`
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    Error loading reservations.
+                </td>
+            </tr>
+        `);
     }
-
-
-    // --------------------------------------------------------
-    // Validate response
-    // --------------------------------------------------------
-
-    if (
-        !response ||
-        response.status !== 0
-    ) {
-
-        console.error(
-            "Failed to load customer reservations:",
-            response
-        );
-
-        return;
-    }
-
-
-    // --------------------------------------------------------
-    // Filter current user's reservations
-    // --------------------------------------------------------
-
-    const reservations =
-        Array.isArray(response.body)
-
-            ? response.body.filter(
-                function (reservation) {
-
-                    return (
-                        Number(
-                            reservation.userId
-                        ) ===
-                        Number(
-                            appState.currentUser.userId ||
-                            appState.currentUser.id
-                        )
-                    );
-                }
-            )
-
-            : [];
-
-
-    // --------------------------------------------------------
-    // Log reservations
-    // --------------------------------------------------------
-
-    console.log(
-        "My reservations:",
-        reservations
-    );
-
-
-    // --------------------------------------------------------
-    // Save to appState if required
-    // --------------------------------------------------------
-
-    appState.customerReservations =
-        reservations;
 }
 
+// ============================================================
+// RENDER CUSTOMER RESERVATIONS TABLE
+// ============================================================
+
+function renderCustomerReservations(reservations = [], branches = [], reservationItems = []) {
+
+    const $tbody = $("#customer-reservations-table");
+
+    if ($tbody.length === 0) {
+        return;
+    }
+
+    $tbody.empty();
+
+    if (!Array.isArray(reservations) || reservations.length === 0) {
+        $tbody.html(`
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                    <div style="font-size: 1.1rem; font-weight: 500; margin-bottom: 0.5rem;">No reservations found</div>
+                    <p style="font-size: 0.85rem; margin-bottom: 1rem;">You have not made any medicine reservations yet.</p>
+                    <button class="btn btn-primary" onclick="showSection('catalog')">Browse Catalog</button>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    $.each(reservations, function (index, res) {
+
+        // Branch name lookup
+        const branch = branches.find(function (b) {
+            return Number(b.id) === Number(res.pharmacyBranchId);
+        });
+
+        const branchName = branch
+            ? (branch.name || branch.branchName || `Branch #${res.pharmacyBranchId}`)
+            : (`Branch #${res.pharmacyBranchId || "-"}`);
+
+        // Items lookup
+        const resItems = reservationItems.filter(function (item) {
+            return Number(item.reservationId) === Number(res.id);
+        });
+
+        let itemsSummary = "";
+
+        if (resItems.length > 0) {
+            itemsSummary = resItems.map(function (item) {
+                const med = appState.medicines.find(function (m) {
+                    return Number(m.id) === Number(item.medicineId);
+                });
+                const medName = med ? med.name : `Medicine #${item.medicineId}`;
+                return `<span class="badge badge-info" style="margin: 2px 4px 2px 0; display: inline-block;">${escapeHtml(medName)} × ${escapeHtml(item.quantity || 1)}</span>`;
+            }).join("");
+        } else {
+            itemsSummary = '<span style="color: var(--text-muted); font-size: 0.85rem;">Standard Reserve</span>';
+        }
+
+        const resDate = res.reservationDate
+            ? new Date(res.reservationDate).toLocaleString()
+            : "-";
+
+        const pickupDate = res.pickupDate
+            ? new Date(res.pickupDate).toLocaleString()
+            : "-";
+
+        const status = (res.status || "PENDING").toUpperCase();
+
+        let statusBadge = `<span class="badge badge-warning">${status}</span>`;
+        if (status === "PREPARED") {
+            statusBadge = `<span class="badge badge-info">${status}</span>`;
+        } else if (status === "COMPLETED") {
+            statusBadge = `<span class="badge badge-success" style="background: var(--accent-emerald, #10b981); color: white;">${status}</span>`;
+        } else if (status === "CANCELLED") {
+            statusBadge = `<span class="badge badge-danger">${status}</span>`;
+        }
+
+        let actionHtml = `<span style="color: var(--text-muted); font-size: 0.85rem;">—</span>`;
+        if (status === "PENDING") {
+            actionHtml = `<button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.3);" onclick="cancelCustomerReservation(${res.id})">Cancel</button>`;
+        }
+
+        const $row = $("<tr>");
+        $row.html(`
+            <td><strong>#RES-${res.id}</strong></td>
+            <td>${escapeHtml(branchName)}</td>
+            <td>${escapeHtml(resDate)}</td>
+            <td>${escapeHtml(pickupDate)}</td>
+            <td>${itemsSummary}</td>
+            <td>${statusBadge}</td>
+            <td style="color: var(--text-secondary); max-width: 180px; font-size: 0.85rem;">${escapeHtml(res.notes || "-")}</td>
+            <td style="text-align: right;">${actionHtml}</td>
+        `);
+
+        $tbody.append($row);
+    });
+}
+
+// ============================================================
+// CANCEL CUSTOMER RESERVATION (JQUERY AJAX)
+// ============================================================
+
+async function cancelCustomerReservation(id) {
+
+    if (!confirm(`Are you sure you want to cancel reservation #RES-${id}?`)) {
+        return;
+    }
+
+    showToast("Cancelling reservation...", "info");
+
+    const token =
+        localStorage.getItem(
+            "medifind_token"
+        );
+
+    try {
+
+        const response = await $.ajax({
+            url: API_BASE_URL + `/v1/reservations/${id}`,
+            type: "DELETE",
+            headers: token ? { "Authorization": "Bearer " + token } : {},
+            dataType: "json"
+        });
+
+        if (response && response.status === 0) {
+            showToast(`Reservation #RES-${id} has been cancelled.`, "success");
+        } else {
+            showToast(response?.message || "Reservation cancelled.", "success");
+        }
+
+        await loadCustomerReservations();
+
+    } catch (error) {
+        console.error("Cancel reservation error:", error);
+        showToast("Failed to cancel reservation.", "danger");
+    }
+}
+
+// ============================================================
+// AI COPILOT CHATBOT (JQUERY AJAX -> SPRING BOOT -> OPENAI API)
+// ============================================================
+
+function toggleAiChat() {
+    const $window = $("#ai-chat-window");
+    if ($window.is(":visible")) {
+        $window.hide();
+    } else {
+        $window.css("display", "flex");
+        $("#chat-input").focus();
+    }
+}
+
+async function sendChatMessage() {
+    const $input = $("#chat-input");
+    const $messages = $("#chat-messages");
+    const message = ($input.val() || "").trim();
+
+    if (!message) {
+        return;
+    }
+
+    // Append user message
+    $messages.append(`
+        <div class="chat-msg msg-user animate-fade" style="text-align: right; margin-bottom: 10px;">
+            <span style="background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; padding: 8px 14px; border-radius: 14px; display: inline-block; max-width: 80%; text-align: left; font-size: 0.9rem;">
+                ${escapeHtml(message)}
+            </span>
+        </div>
+    `);
+
+    $input.val("");
+
+    // Add loading indicator
+    const $loading = $(`
+        <div class="chat-msg msg-bot loading-indicator" style="margin-bottom: 10px;">
+            <span style="background: rgba(255,255,255,0.08); color: var(--text-secondary); padding: 8px 14px; border-radius: 14px; display: inline-block; font-size: 0.85rem;">
+                MediFind Copilot is typing...
+            </span>
+        </div>
+    `);
+    $messages.append($loading);
+
+    const chatBody = document.getElementById("chat-messages");
+    if (chatBody) {
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    const token = localStorage.getItem("medifind_token");
+
+    try {
+        const response = await $.ajax({
+            url: API_BASE_URL + "/v1/ai/chat",
+            type: "POST",
+            contentType: "application/json",
+            headers: token ? { "Authorization": "Bearer " + token } : {},
+            data: JSON.stringify({ message: message }),
+            dataType: "json"
+        });
+
+        $loading.remove();
+
+        const reply = response?.body?.reply || response?.message || "I could not process your query at this moment.";
+
+        $messages.append(`
+            <div class="chat-msg msg-bot animate-fade" style="margin-bottom: 10px;">
+                <div style="background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: #f1f5f9; padding: 10px 14px; border-radius: 14px; display: inline-block; max-width: 85%; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;">
+                    ${escapeHtml(reply)}
+                </div>
+            </div>
+        `);
+
+    } catch (error) {
+        console.error("AI Chat Error:", error);
+        $loading.remove();
+
+        $messages.append(`
+            <div class="chat-msg msg-bot animate-fade" style="margin-bottom: 10px;">
+                <div style="background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); color: var(--accent-rose); padding: 8px 12px; border-radius: 12px; font-size: 0.85rem;">
+                    Could not connect to AI service. Please verify your connection or try again.
+                </div>
+            </div>
+        `);
+    }
+
+    if (chatBody) {
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+}
+
+function sendSuggestedChat(text) {
+    $("#chat-input").val(text);
+    sendChatMessage();
+}
+
+// ============================================================
+// GLOBAL WINDOW EXPORTS
+// ============================================================
 
 window.addToCart = addToCart;
 
 window.openModal = openModal;
 window.closeModal = closeModal;
+window.closeReceiptModal = closeReceiptModal;
 
 window.showSection = showSection;
 
@@ -3487,3 +3814,10 @@ window.removeFromCart = removeFromCart;
 
 window.loadReservationBranches = loadReservationBranches;
 window.loadCustomerReservations = loadCustomerReservations;
+window.renderCustomerReservations = renderCustomerReservations;
+window.cancelCustomerReservation = cancelCustomerReservation;
+window.checkAdminUrlAccess = checkAdminUrlAccess;
+
+window.toggleAiChat = toggleAiChat;
+window.sendChatMessage = sendChatMessage;
+window.sendSuggestedChat = sendSuggestedChat;

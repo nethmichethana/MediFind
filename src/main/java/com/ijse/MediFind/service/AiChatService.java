@@ -1,11 +1,9 @@
-/**
- * Created by AiChatService
- * Date : 8/13/2026
- * Time : 6:23 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.service;
 
+import com.ijse.MediFind.dto.request.AiChatReqDTO;
+import com.ijse.MediFind.dto.response.AiChatResDTO;
+
 public interface AiChatService {
+    AiChatResDTO askAi(AiChatReqDTO reqDTO);
 }
+

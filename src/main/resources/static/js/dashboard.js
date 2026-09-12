@@ -1,20 +1,10 @@
-// ============================================================
-// BACKEND CONFIGURATION
-// ============================================================
-
 const API_BASE_URL = "http://localhost:8080";
 
 let sessionUser = null;
 let dashboardRole = null;
 
-// ============================================================
-// HTML ESCAPING UTILITY
-// ============================================================
-
 function escapeHtml(str) {
-
-    if (str === null || str === undefined) {
-        return "";
+    if (str === null || str === undefined) {return "";
     }
 
     return String(str)
@@ -25,23 +15,13 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-// ============================================================
-// TOAST NOTIFICATIONS
-// ============================================================
-
 function showToast(message, type = "success") {
 
-    // Remove existing toast
     $(".medifind-toast").remove();
 
-
-    // Create toast using jQuery
     const $toast = $("<div>", {
-        class: "medifind-toast animate-fade"
-    });
+        class: "medifind-toast animate-fade"});
 
-
-    // Common toast styles
     $toast.css({
         position: "fixed",
         bottom: "2rem",
@@ -55,77 +35,50 @@ function showToast(message, type = "success") {
         transition: "opacity 0.4s ease"
     });
 
-
-    // Toast type styles
     if (type === "success") {
-
         $toast.css({
             background: "#10b981",
             color: "white"
         });
-
     } else if (type === "danger") {
-
         $toast.css({
             background: "#f43f5e",
             color: "white"
         });
-
     } else if (type === "warning") {
-
         $toast.css({
             background: "#f59e0b",
             color: "white"
         });
-
     } else {
-
         $toast.css({
             background: "#1e293b",
             color: "white"
         });
     }
 
-
-    // Set message
     $toast.text(message);
-
-
-    // Add toast to body
     $("body").append($toast);
 
-
-    // Fade out after 3.2 seconds
     setTimeout(function () {
 
         $toast.css("opacity", "0");
 
-
-        // Remove after fade animation
         setTimeout(function () {
-
             $toast.remove();
-
         }, 400);
-
     }, 3200);
 }
-// ============================================================
-// API AJAX HELPER - jQuery
-// ============================================================
 
 function apiFetch(endpoint, method = "GET", body = null) {
 
     const token = localStorage.getItem("medifind_token");
-
     const headers = {
         "Content-Type": "application/json"
     };
-
     if (token) {
         headers["Authorization"] = "Bearer " + token;
     }
-
     const ajaxOptions = {
         url: API_BASE_URL + endpoint,
         type: method,
@@ -133,7 +86,6 @@ function apiFetch(endpoint, method = "GET", body = null) {
         dataType: "json"
     };
 
-    // Request body
     if (body !== null) {
         ajaxOptions.data = JSON.stringify(body);
     }
@@ -142,17 +94,12 @@ function apiFetch(endpoint, method = "GET", body = null) {
 
         $.ajax(ajaxOptions)
 
-            // ------------------------------------------------
-            // SUCCESS
-            // ------------------------------------------------
             .done(function (data, textStatus, jqXHR) {
-
                 console.log("API Response:", {
                     endpoint: endpoint,
                     method: method,
                     httpStatus: jqXHR.status,
-                    data: data
-                });
+                    data: data});
 
                 const applicationStatus =
                     (
@@ -162,25 +109,12 @@ function apiFetch(endpoint, method = "GET", body = null) {
                     )
                         ? data.status
                         : 0;
-
                 const responseBody =
-                    (
-                        typeof data === "object" &&
-                        data !== null &&
-                        data.body !== undefined
-                    )
-                        ? data.body
-                        : data;
-
+                    (typeof data === "object" && data !== null && data.body !== undefined)
+                        ? data.body : data;
                 const responseMessage =
-                    (
-                        typeof data === "object" &&
-                        data !== null &&
-                        data.message
-                    )
-                        ? data.message
-                        : "Operation Successful";
-
+                    (typeof data === "object" && data !== null && data.message)
+                        ? data.message : "Operation Successful";
                 resolve({
                     success: true,
                     httpStatus: jqXHR.status,
@@ -190,9 +124,6 @@ function apiFetch(endpoint, method = "GET", body = null) {
                 });
             })
 
-            // ------------------------------------------------
-            // ERROR
-            // ------------------------------------------------
             .fail(function (jqXHR, textStatus, errorThrown) {
 
                 console.error("API Error:", {
@@ -201,656 +132,247 @@ function apiFetch(endpoint, method = "GET", body = null) {
                     httpStatus: jqXHR.status,
                     textStatus: textStatus,
                     errorThrown: errorThrown,
-                    response: jqXHR.responseText
-                });
+                    response: jqXHR.responseText});
 
                 let data = jqXHR.responseJSON;
 
-                // If response is not JSON
                 if (!data) {
-                    data = jqXHR.responseText;
-                }
+                    data = jqXHR.responseText;}
 
-                resolve({
-                    success: false,
-                    httpStatus: jqXHR.status || 0,
-
+                resolve({success: false, httpStatus: jqXHR.status || 0,
                     status:
-                        (
-                            typeof data === "object" &&
-                            data !== null &&
-                            data.status !== undefined
-                        )
-                            ? data.status
-                            : (jqXHR.status || 0),
-
+                        (typeof data === "object" && data !== null && data.status !== undefined)
+                            ? data.status : (jqXHR.status || 0),
                     body: null,
 
                     message:
-                        (
-                            typeof data === "object" &&
-                            data !== null &&
-                            (data.message || data.error)
-                        )
-                            ? (data.message || data.error)
-                            : `Server returned HTTP ${jqXHR.status || 0}`
+                        (typeof data === "object" && data !== null && (data.message || data.error))
+                            ? (data.message || data.error) : `Server returned HTTP ${jqXHR.status || 0}`
                 });
             });
     });
 }
-// ============================================================
-// DASHBOARD LOGIN
-// ============================================================
 
 async function handleDashboardLogin() {
 
-    const $emailInput =
-        $("#dashboard-login-email");
-
-    const $passwordInput =
-        $("#dashboard-login-password");
+    const $emailInput = $("#dashboard-login-email");
+    const $passwordInput = $("#dashboard-login-password");
 
     if (!$emailInput.length || !$passwordInput.length) {
-
         console.error("Dashboard login fields not found.");
 
         return;
     }
 
-    const email =
-        $.trim($emailInput.val());
-
-    const password =
-        $.trim($passwordInput.val());
+    const email = $.trim($emailInput.val());
+    const password = $.trim($passwordInput.val());
 
     if (!email || !password) {
-
-        showToast(
-            "Please enter email and password.",
-            "danger"
-        );
+        showToast("Please enter email and password.", "danger");
 
         return;
     }
 
-    showToast(
-        "Signing in...",
-        "info"
-    );
+    showToast("Signing in...", "info");
 
     try {
-
         const response = await $.ajax({
 
             url: "http://localhost:8080/v1/auth/login",
-
             type: "POST",
-
             contentType: "application/json",
 
-            data: JSON.stringify({
-                email: email,
-                password: password
-            })
+            data: JSON.stringify({email: email, password: password})
         });
-
-        // ----------------------------------------------------
-        // LOGIN SUCCESS
-        // ----------------------------------------------------
 
         const loginData = response.body;
 
         if (!loginData || !loginData.token) {
 
-            showToast(
-                "Login successful but JWT token was not received.",
-                "danger"
-            );
+            showToast("Login successful but JWT token was not received.", "danger");
 
             return;
         }
 
-        // ----------------------------------------------------
-        // SAVE JWT TOKEN
-        // ----------------------------------------------------
-
-        localStorage.setItem(
-            "medifind_token",
-            loginData.token
-        );
-
-        // ----------------------------------------------------
-        // GET USER ROLE
-        // ----------------------------------------------------
+        localStorage.setItem("medifind_token", loginData.token);
 
         const role =
             (loginData.role || "").toUpperCase();
 
-        // ----------------------------------------------------
-        // CHECK DASHBOARD ACCESS
-        // ----------------------------------------------------
+        if (role !== "ADMIN" && role !== "PHARMACY_ADMIN" && role !== "PHARMACY_STAFF") {
 
-        if (
-            role !== "ADMIN" &&
-            role !== "PHARMACY_ADMIN" &&
-            role !== "PHARMACY_STAFF"
-        ) {
+            localStorage.removeItem("medifind_token");
 
-            localStorage.removeItem(
-                "medifind_token"
-            );
-
-            showToast(
-                "Access denied. You are not authorized to access the dashboard.",
-                "danger"
-            );
+            showToast("Access denied. You are not authorized to access the dashboard.", "danger");
 
             return;
         }
 
-        // ----------------------------------------------------
-        // CREATE SESSION USER
-        // ----------------------------------------------------
+        const user = {id: loginData.userId, name: loginData.name, email: loginData.email, role: role};
 
-        const user = {
-
-            id: loginData.userId,
-
-            name: loginData.name,
-
-            email: loginData.email,
-
-            role: role
-        };
-
-        localStorage.setItem(
-            "medifind_session",
-            JSON.stringify(user)
-        );
-
-        // ----------------------------------------------------
-        // UPDATE DASHBOARD SESSION
-        // ----------------------------------------------------
+        localStorage.setItem("medifind_session", JSON.stringify(user));
 
         sessionUser = user;
-
         dashboardRole = role;
 
-        // ----------------------------------------------------
-        // HIDE LOGIN SCREEN
-        // ----------------------------------------------------
-
         $("#dashboard-login-screen").hide();
-
-        // ----------------------------------------------------
-        // SHOW DASHBOARD
-        // ----------------------------------------------------
-
         $("#dashboard-app").show();
-
-        // ----------------------------------------------------
-        // LOAD DASHBOARD ACCORDING TO ROLE
-        // ----------------------------------------------------
 
         switchRole(role);
 
-        // ----------------------------------------------------
-        // SUCCESS MESSAGE
-        // ----------------------------------------------------
-
-        showToast(
-            `Welcome back, ${loginData.name || loginData.email}!`,
-            "success"
-        );
+        showToast(`Welcome back, ${loginData.name || loginData.email}!`, "success");
 
     } catch (error) {
+        console.error("Dashboard login failed:", error);
 
-        console.error(
-            "Dashboard login failed:",
-            error
-        );
-
-        let message =
-            "Invalid email or password.";
-
+        let message = "Invalid email or password.";
         if (
-            error.responseJSON &&
-            error.responseJSON.message
-        ) {
-            message =
-                error.responseJSON.message;
+            error.responseJSON && error.responseJSON.message) {
+            message = error.responseJSON.message;
         }
-
-        showToast(
-            message,
-            "danger"
+        showToast(message, "danger"
         );
     }
 }
 
-// ============================================================
-// MEDICINE CATEGORY - GET ALL
-// ============================================================
+// Medicine categories
 
 async function loadDashboardCategories() {
 
     try {
-
-        const response = await apiFetch(
-            "/v1/medicine-categories",
-            "GET"
-        );
-
-
-        console.log(
-            "Dashboard Categories API Response:",
-            response
-        );
-
+        const response = await apiFetch("/v1/medicine-categories", "GET");
+        console.log("Dashboard Categories API Response:", response);
 
         if (!response) {
-
-            showToast(
-                "Cannot load medicine categories.",
-                "danger"
-            );
+            showToast("Cannot load medicine categories.", "danger");
 
             return [];
         }
-
-
 
         if (response.status !== 0) {
-
-            console.error(
-                "Category API error:",
-                response.message
-            );
-
-
-            showToast(
-                response.message ||
-                "Cannot load medicine categories.",
-                "danger"
-            );
-
+            console.error("Category API error:", response.message);
+            showToast(response.message || "Cannot load medicine categories.", "danger");
 
             return [];
         }
 
-
         let categories = response.body;
-
         if (!Array.isArray(categories)) {
-
             if (
-                categories &&
-                Array.isArray(categories.content)
-            ) {
-
+                categories && Array.isArray(categories.content)) {
                 categories = categories.content;
 
             } else {
 
                 categories = [];
-
             }
-
         }
 
-
-        console.log(
-            "Categories from Backend:",
-            categories
-        );
-
+        console.log("Categories from Backend:", categories);
 
         return categories;
 
-
     } catch (error) {
+        console.error("Error loading dashboard categories:", error);
 
-        console.error(
-            "Error loading dashboard categories:",
-            error
-        );
-
-
-        showToast(
-            "Error loading medicine categories.",
-            "danger"
-        );
-
+        showToast("Error loading medicine categories.", "danger");
 
         return [];
-
     }
-
 }
-
-
-// ============================================================
-// RENDER MEDICINE CATEGORY TABLE
-// ============================================================
 
 function renderCategoryTable(categories) {
 
-    const $head =
-        $("#workspace-table-head");
+    const $head = $("#workspace-table-head");
+    const $body = $("#workspace-table-body");
+    const $panelTitle = $("#table-panel-title");
 
-    const $body =
-        $("#workspace-table-body");
-
-    const $panelTitle =
-        $("#table-panel-title");
-
-
-    if (
-        $head.length === 0 ||
-        $body.length === 0
-    ) {
-
-        console.error(
-            "Category table elements not found."
-        );
+    if ($head.length === 0 || $body.length === 0) {
+        console.error("Category table elements not found.");
 
         return;
-
     }
-
-
-    // --------------------------------------------------------
-    // PANEL TITLE
-    // --------------------------------------------------------
 
     if ($panelTitle.length > 0) {
 
         $panelTitle.text(
             "Medicine Category Definitions"
         );
-
     }
 
-
-    // --------------------------------------------------------
-    // TABLE HEADER
-    // --------------------------------------------------------
-
     $head.html(`
-
         <tr>
-
-            <th style="width: 80px;">
-                ID
-            </th>
-
-            <th>
-                Category Name
-            </th>
-
-            <th>
-                Description
-            </th>
-
-            <th style="
-                width: 170px;
-                text-align: right;
-            ">
-                Actions
-            </th>
-
-        </tr>
-
-    `);
-
-
-    // --------------------------------------------------------
-    // CLEAR OLD DATA
-    // --------------------------------------------------------
-
+            <th style="width: 80px;"> ID</th>
+            <th> Category Name </th>
+            <th>Description </th>
+            <th style="width: 170px; text-align: right;">Actions </th>
+        </tr>`);
     $body.empty();
-
-
-    // --------------------------------------------------------
-    // EMPTY STATE
-    // --------------------------------------------------------
 
     if (
         !Array.isArray(categories) ||
         categories.length === 0
     ) {
-
         $body.html(`
-
             <tr>
-
-                <td
-                    colspan="4"
-                    style="
-                        text-align:center;
-                        padding:2.5rem;
-                        color:var(--text-muted);
-                    "
-                >
-
+                <tdcolspan="4" style=" text-align:center padding:2 color:var(--text-muted);">
                     <div style="
                         margin-bottom:0.5rem;
                         font-size:1.1rem;
                         font-weight:500;
-                    ">
-                        No categories found
-                    </div>
-
+                    "> No categories found </div>
                     <div style="
                         font-size:0.85rem;
-                    ">
-                        Click "Add Category" above to create
-                        your first therapeutic classification.
-                    </div>
-
+                    ">Click "Add Category" above to create your first therapeutic classification. </div>
                 </td>
-
-            </tr>
-
-        `);
-
+            </tr>`);
         return;
-
     }
 
-
-    // --------------------------------------------------------
-    // RENDER EACH CATEGORY
-    // --------------------------------------------------------
-
-    $.each(
-        categories,
-        function (index, category) {
-
-
-            const id =
-                category.id;
-
-
-            const name =
-                category.name || "";
-
-
-            const description =
-                category.description || "";
-
-
-            const safeName =
-                escapeHtml(name);
-
-
-            const safeDescription =
-                escapeHtml(description);
-
+    $.each(categories, function (index, category) {
+            const id = category.id;
+            const name = category.name || "";
+            const description = category.description || "";
+            const safeName = escapeHtml(name);
+            const safeDescription = escapeHtml(description);
             const $row = $("<tr>");
 
-
-            // ------------------------------------------------
-            // ID
-            // ------------------------------------------------
+            $row.append(`
+                <td> #${id}</td> `);
 
             $row.append(`
-
                 <td>
-                    #${id}
+                    <strong>${safeName} </strong>
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // NAME
-            // ------------------------------------------------
-
             $row.append(`
-
-                <td>
-                    <strong>
-                        ${safeName}
-                    </strong>
-                </td>
-
-            `);
-
-
-            // ------------------------------------------------
-            // DESCRIPTION
-            // ------------------------------------------------
-
-            $row.append(`
-
                 <td style="
                     color:var(--text-secondary);
                 ">
-
-                    ${
-                safeDescription ||
-                "<em>No description provided</em>"
-            }
-
+                    ${safeDescription || "<em>No description provided</em>"}
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // ACTIONS
-            // ------------------------------------------------
-
-            const $actions =
-                $("<td>")
-                    .css({
-                        "text-align": "right"
-                    });
-
-
-            // ------------------------------------------------
-            // EDIT BUTTON
-            // ------------------------------------------------
-
-            const $editButton =
-                $("<button>", {
-
-                    type: "button",
-
-                    class: "btn btn-secondary",
-
-                    text: "Edit"
-
-                });
-
-
-            $editButton.css({
-
-                padding: "0.3rem 0.65rem",
-
-                fontSize: "0.75rem",
-
-                marginRight: "6px"
-
-            });
-
-
-            /*
-             * jQuery click event.
-             *
-             * No inline onclick.
-             */
+            const $actions = $("<td>").css({"text-align": "right"});
+            const $editButton = $("<button>", {type: "button", class: "btn btn-secondary", text: "Edit"});
+            $editButton.css({padding: "0.3rem 0.65rem", fontSize: "0.75rem", marginRight: "6px"});
 
             $editButton.on(
                 "click",
                 function () {
-
-                    editCategory(
-                        id,
-                        name,
-                        description
-                    );
-
+                    editCategory(id, name, description);
                 }
             );
 
-
-            // ------------------------------------------------
-            // DELETE BUTTON
-            // ------------------------------------------------
-
-            const $deleteButton =
-                $("<button>", {
-
-                    type: "button",
-
-                    class: "btn btn-secondary",
-
-                    text: "Delete"
-
-                });
-
-
-            $deleteButton.css({
-
-                padding: "0.3rem 0.65rem",
-
-                fontSize: "0.75rem",
-
-                color: "var(--accent-rose)",
-
-                borderColor:
-                    "rgba(244, 63, 94, 0.3)"
-
+            const $deleteButton = $("<button>", {type: "button", class: "btn btn-secondary", text: "Delete"});
+            $deleteButton.css({padding: "0.3rem 0.65rem", fontSize: "0.75rem", color: "var(--accent-rose)", borderColor: "rgba(244, 63, 94, 0.3)"
             });
-
-
-            $deleteButton.on(
-                "click",
-                function () {
-
-                    deleteCategory(id);
-
-                }
+            $deleteButton.on("click", function () {deleteCategory(id);}
             );
 
-
-            // ------------------------------------------------
-            // ADD BUTTONS
-            // ------------------------------------------------
-
-            $actions
-                .append($editButton)
-                .append($deleteButton);
-
-
+            $actions.append($editButton).append($deleteButton);
             $row.append($actions);
-
-
-            // ------------------------------------------------
-            // ADD ROW TO TABLE
-            // ------------------------------------------------
 
             $body.append($row);
 
@@ -859,43 +381,22 @@ function renderCategoryTable(categories) {
 
 }
 
-
-// ============================================================
-// CATEGORY STATISTICS
-// ============================================================
-
 function renderCategoryStats(categories) {
 
-    const $statsContainer =
-        $("#workspace-stats");
-
-
+    const $statsContainer = $("#workspace-stats");
     if ($statsContainer.length === 0) {
 
         return;
-
     }
 
-
-    const total =
-        Array.isArray(categories)
-            ? categories.length
-            : 0;
-
+    const total = Array.isArray(categories) ? categories.length : 0;
 
     $statsContainer.html(`
-
         <div class="glass-card stat-card animate-fade">
-
             <div class="stat-header">
-
-                <span class="stat-title">
-                    Total Categories
-                </span>
-
+                <span class="stat-title">Total Categories </span>
 
                 <div class="stat-icon">
-
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="20"
@@ -903,736 +404,278 @@ function renderCategoryStats(categories) {
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
-                        stroke-width="2"
-                    >
-
+                        stroke-width="2">
                         <path
                             stroke-linecap="round"
                             stroke-linejoin="round"
-                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                        />
-
-                    </svg>
-
+                            d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+               </svg>
                 </div>
-
             </div>
-
-
-            <div class="stat-val">
-                ${total}
-            </div>
-
-
-            <span class="stat-desc">
-                Therapeutic classifications loaded
-                from database
-            </span>
-
+            
+            <div class="stat-val"> ${total}</div>
+            <span class="stat-desc">Therapeutic classifications loaded from database </span>
         </div>
-
     `);
-
 }
-
-
-// ============================================================
-// MODAL CONTROLS
-// ============================================================
 
 function openModal(modalId) {
 
-    const $modal =
-        $("#" + modalId);
-
+    const $modal = $("#" + modalId);
 
     if ($modal.length === 0) {
-
-        console.error(
-            "Modal not found:",
-            modalId
-        );
+        console.error("Modal not found:", modalId);
 
         return;
-
     }
 
-
-    $modal.css(
-        "display",
-        "flex"
-    );
-
+    $modal.css("display", "flex");
 }
-
-
-// ============================================================
-// CLOSE MODAL
-// ============================================================
 
 function closeModal(modalId) {
 
-    const $modal =
-        $("#" + modalId);
-
+    const $modal = $("#" + modalId);
 
     if ($modal.length === 0) {
-
         return;
-
     }
-
-
-    $modal.css(
-        "display",
-        "none"
-    );
-
+    $modal.css("display", "none");
 }
-
-
-// ============================================================
-// OPEN CATEGORY MODAL
-// ============================================================
-
 function openCategoryModal(
-    id = null,
-    name = "",
-    description = ""
-) {
+    id = null, name = "", description = "") {
 
-    const $title =
-        $("#category-modal-title");
-
-
-    const $idInput =
-        $("#category-edit-id");
-
-
-    const $nameInput =
-        $("#category-name");
-
-
-    const $descInput =
-        $("#category-desc");
-
-
+    const $title = $("#category-modal-title");
+    const $idInput = $("#category-edit-id");
+    const $nameInput = $("#category-name");
+    const $descInput = $("#category-desc");
     if (
         $title.length === 0 ||
         $idInput.length === 0 ||
         $nameInput.length === 0 ||
         $descInput.length === 0
     ) {
-
-        console.error(
-            "Category modal elements not found."
-        );
-
+        console.error("Category modal elements not found.");
         return;
-
     }
 
+    if (id !== null && id !== undefined && id !== "") {
 
-    // --------------------------------------------------------
-    // EDIT
-    // --------------------------------------------------------
-
-    if (
-        id !== null &&
-        id !== undefined &&
-        id !== ""
-    ) {
-
-        $title.text(
-            "Edit Medicine Category"
-        );
-
-
+        $title.text("Edit Medicine Category");
         $idInput.val(id);
-
-
         $nameInput.val(name);
-
-
         $descInput.val(description);
-
     }
-
-
-        // --------------------------------------------------------
-        // CREATE
-    // --------------------------------------------------------
-
     else {
-
-        $title.text(
-            "Create Medicine Category"
-        );
-
-
+        $title.text("Create Medicine Category");
         $idInput.val("");
-
-
         $nameInput.val("");
-
-
         $descInput.val("");
-
     }
 
-
-    openModal(
-        "category-modal"
-    );
-
+    openModal("category-modal");
 }
 
-
-// ============================================================
-// EDIT CATEGORY
-// ============================================================
-
-function editCategory(
-    id,
-    name,
-    description
-) {
-
-    console.log(
-        "Edit Category:",
-        {
-            id: id,
-            name: name,
-            description: description
-        }
+function editCategory(id, name, description) {
+    console.log("Edit Category:",
+        {id: id, name: name, description: description}
     );
 
-
-    openCategoryModal(
-        id,
-        name,
-        description
+    openCategoryModal(id, name, description
     );
-
 }
-
-
-// ============================================================
-// SAVE CATEGORY
-// CREATE + UPDATE
-// ============================================================
 
 async function saveCategory() {
 
-    const $idInput =
-        $("#category-edit-id");
-
-
-    const $nameInput =
-        $("#category-name");
-
-
-    const $descInput =
-        $("#category-desc");
-
+    const $idInput = $("#category-edit-id");
+    const $nameInput = $("#category-name");
+    const $descInput = $("#category-desc");
 
     if ($nameInput.length === 0) {
-
-        console.error(
-            "Category name input not found."
-        );
+        console.error("Category name input not found.");
 
         return;
-
     }
 
-
-    // --------------------------------------------------------
-    // GET FORM VALUES
-    // --------------------------------------------------------
-
-    const name =
-        $.trim(
-            $nameInput.val() || ""
-        );
-
-
-    const description =
-        $descInput.length > 0
-            ? $.trim(
-                $descInput.val() || ""
-            )
-            : "";
-
-
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
+    const name = $.trim($nameInput.val() || "");
+    const description = $descInput.length > 0 ? $.trim($descInput.val() || "") : "";
 
     if (!name) {
-
-        showToast(
-            "Category name is required.",
-            "warning"
+        showToast("Category name is required.", "warning");
+        $nameInput.trigger("focus"
         );
-
-
-        $nameInput.trigger(
-            "focus"
-        );
-
 
         return;
-
     }
 
+    const editId = $idInput.length > 0 ? $.trim($idInput.val() || "") : "";
+    const isEdit = editId !== "";
+    const payload = {name: name, description: description};
+    const endpoint = isEdit ? `/v1/medicine-categories/${editId}` : "/v1/medicine-categories";
+    const method = isEdit ? "PUT" : "POST";
 
-    // --------------------------------------------------------
-    // GET EDIT ID
-    // --------------------------------------------------------
-
-    const editId =
-        $idInput.length > 0
-            ? $.trim(
-                $idInput.val() || ""
-            )
-            : "";
-
-
-    const isEdit =
-        editId !== "";
-
-
-    // --------------------------------------------------------
-    // REQUEST PAYLOAD
-    // --------------------------------------------------------
-
-    const payload = {
-
-        name: name,
-
-        description: description
-
-    };
-
-
-    // --------------------------------------------------------
-    // ENDPOINT
-    // --------------------------------------------------------
-
-    const endpoint =
-        isEdit
-            ? `/v1/medicine-categories/${editId}`
-            : "/v1/medicine-categories";
-
-
-    const method =
-        isEdit
-            ? "PUT"
-            : "POST";
-
-
-    console.log(
-        "Saving Category:",
-        {
-            method: method,
-            endpoint: endpoint,
-            payload: payload
-        }
+    console.log("Saving Category:",
+        {method: method, endpoint: endpoint, payload: payload}
     );
-
 
     showToast(
-        isEdit
-            ? "Updating category..."
-            : "Creating category...",
-        "info"
+        isEdit ? "Updating category..." : "Creating category...", "info"
     );
 
 
-    // --------------------------------------------------------
-    // AJAX REQUEST
-    // --------------------------------------------------------
-
     try {
+        const response = await apiFetch(endpoint, method, payload);
 
-        const response =
-            await apiFetch(
-                endpoint,
-                method,
-                payload
-            );
-
-
-        console.log(
-            "Save Category Response:",
-            response
+        console.log("Save Category Response:", response
         );
 
-
-        // ----------------------------------------------------
-        // BACKEND COMMON RESPONSE
-        // ----------------------------------------------------
-
-        if (
-            !response ||
-            response.status !== 0
+        if (!response || response.status !== 0
         ) {
 
-            showToast(
-                response?.message ||
-                "Failed to save category.",
-                "danger"
-            );
-
-
+            showToast(response?.message || "Failed to save category.", "danger");
             return;
-
         }
 
-
-        // ----------------------------------------------------
-        // SUCCESS
-        // ----------------------------------------------------
-
         showToast(
-            isEdit
-                ? "Category updated successfully!"
-                : "Category created successfully!",
-            "success"
+            isEdit ? "Category updated successfully!" : "Category created successfully!", "success"
         );
-
-
-        // ----------------------------------------------------
-        // CLOSE MODAL
-        // ----------------------------------------------------
 
         closeModal(
             "category-modal"
         );
 
+        const categories = await loadDashboardCategories();
 
-        // ----------------------------------------------------
-        // RELOAD BACKEND DATA
-        // ----------------------------------------------------
-
-        const categories =
-            await loadDashboardCategories();
-
-
-        renderCategoryTable(
-            categories
-        );
-
-
-        renderCategoryStats(
-            categories
-        );
+        renderCategoryTable(categories);
+        renderCategoryStats(categories);
 
 
     } catch (error) {
 
-        console.error(
-            "Error saving category:",
-            error
-        );
+        console.error("Error saving category:", error);
 
-
-        /*
-         * jQuery AJAX error response
-         */
-
-        let message =
-            "Error saving category.";
-
+        let message = "Error saving category.";
 
         if (
-            error &&
-            error.responseJSON &&
-            error.responseJSON.message
+            error && error.responseJSON && error.responseJSON.message
         ) {
-
-            message =
-                error.responseJSON.message;
-
+            message = error.responseJSON.message;
         }
 
-
-        showToast(
-            message,
-            "danger"
-        );
-
+        showToast(message, "danger");
     }
-
 }
-
-
-// ============================================================
-// DELETE CATEGORY
-// ============================================================
 
 async function deleteCategory(id) {
 
-    if (
-        id === null ||
-        id === undefined ||
-        id === ""
+    if (id === null || id === undefined || id === ""
     ) {
-
-        console.error(
-            "Category ID is missing."
-        );
+        console.error("Category ID is missing.");
 
         return;
-
     }
 
+    const confirmed = confirm(`Are you sure you want to delete category #${id}?`);
 
-    const confirmed =
-        confirm(
-            `Are you sure you want to delete category #${id}?`
-        );
+    if (!confirmed) {return;}
 
-
-    if (!confirmed) {
-
-        return;
-
-    }
-
-
-    showToast(
-        "Deleting category...",
-        "info"
-    );
-
+    showToast("Deleting category...", "info");
 
     try {
+        const response = await apiFetch(`/v1/medicine-categories/${id}`, "DELETE");
 
-        const response =
-            await apiFetch(
-                `/v1/medicine-categories/${id}`,
-                "DELETE"
-            );
+        console.log("Delete Category Response:", response);
 
-
-        console.log(
-            "Delete Category Response:",
-            response
-        );
-
-
-        // ----------------------------------------------------
-        // CHECK BACKEND RESPONSE
-        // ----------------------------------------------------
-
-        if (
-            !response ||
-            response.status !== 0
+        if (!response || response.status !== 0
         ) {
 
-            showToast(
-                response?.message ||
-                "Failed to delete category.",
-                "danger"
-            );
-
+            showToast(response?.message || "Failed to delete category.", "danger");
 
             return;
-
         }
 
+        showToast("Category deleted successfully!", "success");
 
-        // ----------------------------------------------------
-        // SUCCESS
-        // ----------------------------------------------------
+        const categories = await loadDashboardCategories();
 
-        showToast(
-            "Category deleted successfully!",
-            "success"
-        );
-
-
-        // ----------------------------------------------------
-        // RELOAD DATABASE DATA
-        // ----------------------------------------------------
-
-        const categories =
-            await loadDashboardCategories();
-
-
-        renderCategoryTable(
-            categories
-        );
-
-
-        renderCategoryStats(
-            categories
-        );
-
+        renderCategoryTable(categories);
+        renderCategoryStats(categories);
 
     } catch (error) {
+        console.error("Error deleting category:", error);
 
-        console.error(
-            "Error deleting category:",
-            error
-        );
+        let message = "Error deleting category.";
 
+        if (error && error.responseJSON && error.responseJSON.message) {
 
-        let message =
-            "Error deleting category.";
-
-
-        if (
-            error &&
-            error.responseJSON &&
-            error.responseJSON.message
-        ) {
-
-            message =
-                error.responseJSON.message;
-
+            message = error.responseJSON.message;
         }
 
-
-        showToast(
-            message,
-            "danger"
+        showToast(message, "danger"
         );
-
     }
-
 }
-// ============================================================
-// MEDICINE - GET ALL
-// ============================================================
+
+//medicine
 
 async function loadDashboardMedicines() {
 
     try {
+        const response = await apiFetch("/v1/medicines", "GET");
 
-        const response =
-            await apiFetch(
-                "/v1/medicines",
-                "GET"
-            );
+        console.log("Dashboard Medicines API Response:", response);
 
-        console.log(
-            "Dashboard Medicines API Response:",
-            response
-        );
+        if (!response || !response.success) {
 
-        if (
-            !response ||
-            !response.success
-        ) {
+            console.error("Failed to load medicines:", response?.message);
 
-            console.error(
-                "Failed to load medicines:",
-                response?.message
-            );
-
-            showToast(
-                response?.message ||
-                "Cannot load medicines.",
-                "danger"
-            );
+            showToast(response?.message || "Cannot load medicines.", "danger");
 
             return [];
         }
 
-        let medicines =
-            response.body;
+        let medicines = response.body;
 
         if (!Array.isArray(medicines)) {
+            if (medicines && Array.isArray(medicines.content)) {
 
-            if (
-                medicines &&
-                Array.isArray(medicines.content)
-            ) {
-
-                medicines =
-                    medicines.content;
+                medicines = medicines.content;
 
             } else {
-
                 medicines = [];
             }
         }
 
-        console.log(
-            "Medicines from Backend:",
-            medicines
+        console.log("Medicines from Backend:", medicines
         );
 
         return medicines;
 
     } catch (error) {
-
-        console.error(
-            "Error loading medicines:",
-            error
-        );
-
-        showToast(
-            "Error loading medicines.",
-            "danger"
-        );
+        console.error("Error loading medicines:", error);
+        showToast("Error loading medicines.", "danger");
 
         return [];
     }
 }
 
-// ============================================================
-// RENDER MEDICINE TABLE
-// ============================================================
-
 function renderMedicineTable(medicines, categories = []) {
 
-    const $head =
-        $("#workspace-table-head");
+    const $head = $("#workspace-table-head");
+    const $body = $("#workspace-table-body");
+    const $panelTitle = $("#table-panel-title");
 
-    const $body =
-        $("#workspace-table-body");
-
-    const $panelTitle =
-        $("#table-panel-title");
-
-
-    if (
-        $head.length === 0 ||
-        $body.length === 0
+    if ($head.length === 0 || $body.length === 0
     ) {
-
-        console.error(
-            "Medicine table elements not found."
-        );
+        console.error("Medicine table elements not found.");
 
         return;
-
     }
-
-
-    // --------------------------------------------------------
-    // PANEL TITLE
-    // --------------------------------------------------------
 
     if ($panelTitle.length > 0) {
-
-        $panelTitle.text(
-            "Medicine Catalog"
-        );
-
+        $panelTitle.text("Medicine Catalog");
     }
 
-
-    // --------------------------------------------------------
-    // TABLE HEADER
-    // --------------------------------------------------------
-
     $head.html(`
-
         <tr>
             <th style="width:60px;">ID</th>
             <th>Medicine Name</th>
@@ -1643,350 +686,124 @@ function renderMedicineTable(medicines, categories = []) {
             <th>Category</th>
             <th>Prescription</th>
             <th>Status</th>
-            <th style="width:170px; text-align:right;">
-                Actions
-            </th>
-        </tr>
-
-    `);
-
-
-    // --------------------------------------------------------
-    // CLEAR OLD DATA
-    // --------------------------------------------------------
+            <th style="width:170px; text-align:right;">Actions</th>
+        </tr>`);
 
     $body.empty();
 
-
-    // --------------------------------------------------------
-    // EMPTY STATE
-    // --------------------------------------------------------
-
-    if (
-        !Array.isArray(medicines) ||
-        medicines.length === 0
+    if (!Array.isArray(medicines) || medicines.length === 0
     ) {
-
         $body.html(`
-
             <tr>
-                <td
-                    colspan="10"
-                    style="
+                <td colspan="10" style="
                         text-align:center;
                         padding:2.5rem;
                         color:var(--text-muted);
-                    "
-                >
-                    <div
-                        style="
-                            margin-bottom:0.5rem;
-                            font-size:1.1rem;
-                            font-weight:500;
-                        "
-                    >
+                    ">
+                    <div style=" margin-bottom:0.5rem; font-size:1.1rem; font-weight:500;" >
                         No medicines found
                     </div>
-
-                    <div
-                        style="font-size:0.85rem;"
-                    >
-                        Click "Add Medicine" to create
-                        your first medicine.
-                    </div>
+                   <div style="font-size:0.85rem;"> Click "Add Medicine" to create your first medicine. </div>
                 </td>
             </tr>
-
         `);
-
         return;
-
     }
 
-
-    // --------------------------------------------------------
-    // RENDER EACH MEDICINE
-    // --------------------------------------------------------
-
-    $.each(
-        medicines,
+    $.each(medicines,
         function (index, medicine) {
-
-            const category =
-                categories.find(
-                    category =>
-                        Number(category.id) ===
-                        Number(medicine.categoryId)
-                );
-
-            const categoryName =
-                category
-                    ? category.name
-                    : "Unknown";
-
-            const prescription =
-                medicine.prescriptionRequired
-                    ? "Required"
-                    : "Not Required";
-
-            const status =
-                medicine.active
-                    ? "Active"
-                    : "Inactive";
-
-
+            const category = categories.find(category => Number(category.id) === Number(medicine.categoryId));
+            const categoryName = category ? category.name : "Unknown";
+            const prescription = medicine.prescriptionRequired ? "Required" : "Not Required";
+            const status = medicine.active ? "Active" : "Inactive";
             const $row = $("<tr>");
 
-
-            // ------------------------------------------------
-            // ID
-            // ------------------------------------------------
-
             $row.append(`
-
-                <td>
-                    #${escapeHtml(medicine.id)}
+                <td> #${escapeHtml(medicine.id)}
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // NAME
-            // ------------------------------------------------
-
             $row.append(`
-
                 <td>
-                    <strong>
-                        ${escapeHtml(medicine.name)}
-                    </strong>
+                 <strong> ${escapeHtml(medicine.name)}</strong>
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // GENERIC NAME
-            // ------------------------------------------------
+            $row.append(`
+                 <td> ${escapeHtml(medicine.genericName || "")} </td>`)
 
             $row.append(`
-
-                <td>
-                    ${escapeHtml(medicine.genericName || "")}
-                </td>
-
-            `);
-
-
-            // ------------------------------------------------
-            // BRAND
-            // ------------------------------------------------
-
-            $row.append(`
-
                 <td>
                     ${escapeHtml(medicine.brandName || "")}
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // FORM
-            // ------------------------------------------------
-
             $row.append(`
-
                 <td>
                     ${escapeHtml(medicine.dosageForm || "")}
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // STRENGTH
-            // ------------------------------------------------
-
             $row.append(`
-
                 <td>
                     ${escapeHtml(medicine.strength || "")}
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // CATEGORY
-            // ------------------------------------------------
-
             $row.append(`
-
                 <td>
                     ${escapeHtml(categoryName)}
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // PRESCRIPTION
-            // ------------------------------------------------
-
             $row.append(`
-
                 <td>
                     <span
-                        class="badge ${
-                medicine.prescriptionRequired
-                    ? "badge-danger"
-                    : "badge-success"
-            }"
-                    >
+                        class="badge ${medicine.prescriptionRequired ? "badge-danger" : "badge-success"}">
                         ${prescription}
                     </span>
                 </td>
-
             `);
 
-
-            // ------------------------------------------------
-            // STATUS
-            // ------------------------------------------------
-
             $row.append(`
-
                 <td>
-                    <span
-                        class="badge ${
-                medicine.active
-                    ? "badge-success"
-                    : "badge-danger"
-            }"
-                    >
+                    <span class="badge ${medicine.active ? "badge-success" : "badge-danger"}">
                         ${status}
                     </span>
                 </td>
-
             `);
-
-
-            // ------------------------------------------------
-            // ACTIONS
-            // ------------------------------------------------
 
             const $actions =
                 $("<td>")
                     .css({
                         "text-align": "right"
                     });
-
-
-            // ------------------------------------------------
-            // EDIT BUTTON
-            // ------------------------------------------------
-
             const $editButton =
                 $("<button>", {
-
-                    type: "button",
-
-                    class: "btn btn-secondary",
-
-                    text: "Edit"
-
+                    type: "button", class: "btn btn-secondary", text: "Edit"
                 });
 
-
-            $editButton.css({
-
-                padding: "0.3rem 0.65rem",
-
-                fontSize: "0.75rem",
-
-                marginRight: "6px"
-
+            $editButton.css({padding: "0.3rem 0.65rem", fontSize: "0.75rem", marginRight: "6px"
             });
 
-
-            /*
-             * jQuery click event.
-             *
-             * No inline onclick.
-             */
-
-            $editButton.on(
-                "click",
-                function () {
-
-                    editMedicine(
-                        medicine.id
-                    );
-
+            $editButton.on("click", function () {
+                    editMedicine(medicine.id);
                 }
             );
 
-
-            // ------------------------------------------------
-            // DELETE BUTTON
-            // ------------------------------------------------
-
-            const $deleteButton =
-                $("<button>", {
-
-                    type: "button",
-
-                    class: "btn btn-secondary",
-
-                    text: "Delete"
-
-                });
-
-
-            $deleteButton.css({
-
-                padding: "0.3rem 0.65rem",
-
-                fontSize: "0.75rem",
-
-                color: "var(--accent-rose)",
-
-                borderColor:
-                    "rgba(244, 63, 94, 0.3)"
-
+            const $deleteButton = $("<button>", {type: "button", class: "btn btn-secondary", text: "Delete"});
+            $deleteButton.css({padding: "0.3rem 0.65rem", fontSize: "0.75rem", color: "var(--accent-rose)", borderColor: "rgba(244, 63, 94, 0.3)"
             });
 
-
-            $deleteButton.on(
-                "click",
-                function () {
-
-                    deleteMedicine(
-                        medicine.id
-                    );
-
+            $deleteButton.on("click", function () {
+                    deleteMedicine(medicine.id);
                 }
             );
-
-
-            // ------------------------------------------------
-            // ADD BUTTONS
-            // ------------------------------------------------
 
             $actions
                 .append($editButton)
                 .append($deleteButton);
-
-
             $row.append($actions);
-
-
-            // ------------------------------------------------
-            // ADD ROW TO TABLE
-            // ------------------------------------------------
-
             $body.append($row);
 
         }
@@ -1994,36 +811,18 @@ function renderMedicineTable(medicines, categories = []) {
 
 }
 
-// ============================================================
-// MEDICINE STATISTICS
-// ============================================================
-
 function renderMedicineStats(medicines) {
 
-    const $statsContainer =
-        $("#workspace-stats");
-
-
+    const $statsContainer = $("#workspace-stats");
     if ($statsContainer.length === 0) {
 
         return;
-
     }
 
-
-    const list =
-        Array.isArray(medicines)
-            ? medicines
-            : [];
-
-    const total =
-        list.length;
-
-    const active =
-        list.filter(
-            medicine => medicine.active === true
-        ).length;
-
+    const list = Array.isArray(medicines) ? medicines : [];
+    const total = list.length;
+    const active = list.filter(
+            medicine => medicine.active === true).length;
     const prescription =
         list.filter(
             medicine =>
@@ -2031,122 +830,56 @@ function renderMedicineStats(medicines) {
         ).length;
 
     $statsContainer.html(`
-
         <div class="glass-card stat-card animate-fade">
-
             <div class="stat-header">
-
                 <span class="stat-title">
                     Total Medicines
                 </span>
-
                 <div class="stat-icon">
                     💊
                 </div>
-
             </div>
-
             <div class="stat-val">
                 ${total}
             </div>
-
             <span class="stat-desc">
                 Medicines loaded from database
             </span>
-
         </div>
 
-
         <div class="glass-card stat-card animate-fade">
-
             <div class="stat-header">
-
-                <span class="stat-title">
-                    Active Medicines
-                </span>
-
-                <div class="stat-icon">
-                    ✓
-                </div>
-
+                <span class="stat-title">Active Medicines</span>
+                <div class="stat-icon">✓</div>
             </div>
-
-            <div class="stat-val">
-                ${active}
-            </div>
-
-            <span class="stat-desc">
-                Currently active catalog items
-            </span>
-
+            <div class="stat-val">${active}</div>
+            <span class="stat-desc">Currently active catalog items</span>
         </div>
 
-
         <div class="glass-card stat-card animate-fade">
-
             <div class="stat-header">
-
-                <span class="stat-title">
-                    Prescription Medicines
-                </span>
-
-                <div class="stat-icon">
-                    Rx
-                </div>
-
+                <span class="stat-title">Prescription Medicines</span>
+                <div class="stat-icon">Rx</div>
             </div>
-
-            <div class="stat-val">
-                ${prescription}
-            </div>
-
-            <span class="stat-desc">
-                Medicines requiring prescription
-            </span>
-
+            <div class="stat-val">${prescription}</div>
+            <span class="stat-desc">Medicines requiring prescription</span>
         </div>
     `);
 }
 
 async function openMedicineModal(medicine = null) {
 
-    const $title =
-        $("#medicine-modal-title");
-
-    const $idInput =
-        $("#medicine-edit-id");
-
-    const $nameInput =
-        $("#medicine-name");
-
-    const $genericInput =
-        $("#medicine-generic-name");
-
-    const $brandInput =
-        $("#medicine-brand-name");
-
-    const $dosageInput =
-        $("#medicine-dosage-form");
-
-    const $strengthInput =
-        $("#medicine-strength");
-
-    const $categoryInput =
-        $("#medicine-category-id");
-
-    const $descriptionInput =
-        $("#medicine-description");
-
-    const $prescriptionInput =
-        $("#medicine-prescription-required");
-
-    const $activeInput =
-        $("#medicine-active");
-
-
-    // ---------------------------------------------------------
-    // CHECK FORM ELEMENTS
-    // ---------------------------------------------------------
+    const $title = $("#medicine-modal-title");
+    const $idInput = $("#medicine-edit-id");
+    const $nameInput = $("#medicine-name");
+    const $genericInput = $("#medicine-generic-name");
+    const $brandInput = $("#medicine-brand-name");
+    const $dosageInput = $("#medicine-dosage-form");
+    const $strengthInput = $("#medicine-strength");
+    const $categoryInput = $("#medicine-category-id");
+    const $descriptionInput = $("#medicine-description");
+    const $prescriptionInput = $("#medicine-prescription-required");
+    const $activeInput = $("#medicine-active");
 
     if (
         $title.length === 0 ||
@@ -2162,255 +895,94 @@ async function openMedicineModal(medicine = null) {
         $activeInput.length === 0
     ) {
 
-        console.error(
-            "Medicine modal elements are missing from dashboard.html"
-        );
+        console.error("Medicine modal elements are missing from dashboard.html");
 
-        showToast(
-            "Medicine form could not be opened.",
-            "danger"
-        );
+        showToast("Medicine form could not be opened.", "danger");
 
         return;
     }
 
+    const categories = await loadDashboardCategories();
 
-    // ---------------------------------------------------------
-    // LOAD CATEGORIES
-    // ---------------------------------------------------------
+    $categoryInput.html(`<option value="">Select category</option>`);
 
-    const categories =
-        await loadDashboardCategories();
-
-
-    $categoryInput.html(`
-        <option value="">
-            Select category
-        </option>
-    `);
-
-
-    $.each(
-        categories,
-        function (index, category) {
-
-            $categoryInput.append(
-                $("<option>", {
-                    value: category.id,
-                    text: category.name
-                })
-            );
-
+    $.each(categories, function (index, category) {
+            $categoryInput.append($("<option>", {value: category.id, text: category.name}));
         }
     );
 
-
-    // ---------------------------------------------------------
-    // CREATE
-    // ---------------------------------------------------------
-
     if (!medicine) {
-
-        $title.text(
-            "Create Medicine"
-        );
-
+        $title.text("Create Medicine");
         $idInput.val("");
-
         $nameInput.val("");
-
         $genericInput.val("");
-
         $brandInput.val("");
-
         $dosageInput.val("");
-
         $strengthInput.val("");
-
         $categoryInput.val("");
-
         $descriptionInput.val("");
-
         $prescriptionInput.val("false");
-
         $activeInput.val("true");
-
 
         openModal("medicine-modal");
 
         return;
     }
-
-
-    // ---------------------------------------------------------
-    // EDIT
-    // ---------------------------------------------------------
-
-    $title.text(
-        "Edit Medicine"
-    );
-
-    $idInput.val(
-        medicine.id ?? ""
-    );
-
-    $nameInput.val(
-        medicine.name ?? ""
-    );
-
-    $genericInput.val(
-        medicine.genericName ?? ""
-    );
-
-    $brandInput.val(
-        medicine.brandName ?? ""
-    );
-
-    $dosageInput.val(
-        medicine.dosageForm ?? ""
-    );
-
-    $strengthInput.val(
-        medicine.strength ?? ""
-    );
-
-    $categoryInput.val(
-        medicine.categoryId ?? ""
-    );
-
-    $descriptionInput.val(
-        medicine.description ?? ""
-    );
-
-    $prescriptionInput.val(
-        String(
-            medicine.prescriptionRequired ?? false
-        )
-    );
-
-    $activeInput.val(
-        String(
-            medicine.active ?? true
-        )
-    );
-
+    $title.text("Edit Medicine");
+    $idInput.val(medicine.id ?? "");
+    $nameInput.val(medicine.name ?? "");
+    $genericInput.val(medicine.genericName ?? "");
+    $brandInput.val(medicine.brandName ?? "");
+    $dosageInput.val(medicine.dosageForm ?? "");
+    $strengthInput.val(medicine.strength ?? "");
+    $categoryInput.val(medicine.categoryId ?? "");
+    $descriptionInput.val(medicine.description ?? "");
+    $prescriptionInput.val(String(medicine.prescriptionRequired ?? false));
+    $activeInput.val(String(medicine.active ?? true));
 
     openModal("medicine-modal");
 }
 
-// ============================================================
-// MEDICINE - EDIT
-// ============================================================
-
 async function editMedicine(id) {
 
-    showToast(
-        "Loading medicine...",
-        "info"
-    );
-
+    showToast("Loading medicine...", "info");
 
     try {
+        const response = await apiFetch(`/v1/medicines/${id}`, "GET");
 
-        const response =
-            await apiFetch(
-                `/v1/medicines/${id}`,
-                "GET"
-            );
-
-
-        if (
-            !response ||
-            !response.success
-        ) {
-
-            showToast(
-                response?.message ||
-                "Cannot load medicine.",
-                "danger"
-            );
+        if (!response || !response.success) {
+            showToast(response?.message || "Cannot load medicine.", "danger");
 
             return;
         }
 
-
-        const medicine =
-            response.body;
-
+        const medicine = response.body;
 
         if (!medicine) {
-
-            showToast(
-                "Medicine not found.",
-                "danger"
-            );
+            showToast("Medicine not found.", "danger");
 
             return;
         }
-
-
-        await openMedicineModal(
-            medicine
-        );
+        await openMedicineModal(medicine);
 
     } catch (error) {
-
-        console.error(
-            "Error loading medicine:",
-            error
-        );
-
-        showToast(
-            "Error loading medicine.",
-            "danger"
-        );
+        console.error("Error loading medicine:", error);
+        showToast("Error loading medicine.", "danger");
     }
 }
 
-// ============================================================
-// MEDICINE - SAVE (CREATE + UPDATE)
-// ============================================================
-
 async function saveMedicine() {
 
-    // ---------------------------------------------------------
-    // Get form elements
-    // ---------------------------------------------------------
-
-    const $idInput =
-        $("#medicine-edit-id");
-
-    const $nameInput =
-        $("#medicine-name");
-
-    const $genericInput =
-        $("#medicine-generic-name");
-
-    const $brandInput =
-        $("#medicine-brand-name");
-
-    const $dosageInput =
-        $("#medicine-dosage-form");
-
-    const $strengthInput =
-        $("#medicine-strength");
-
-    const $categoryInput =
-        $("#medicine-category-id");
-
-    const $descriptionInput =
-        $("#medicine-description");
-
-    const $prescriptionInput =
-        $("#medicine-prescription-required");
-
-    const $activeInput =
-        $("#medicine-active");
-
-
-    // ---------------------------------------------------------
-    // Check required elements
-    // ---------------------------------------------------------
+    const $idInput = $("#medicine-edit-id");
+    const $nameInput = $("#medicine-name");
+    const $genericInput = $("#medicine-generic-name");
+    const $brandInput = $("#medicine-brand-name");
+    const $dosageInput =$("#medicine-dosage-form");
+    const $strengthInput = $("#medicine-strength");
+    const $categoryInput = $("#medicine-category-id");
+    const $descriptionInput = $("#medicine-description");
+    const $prescriptionInput = $("#medicine-prescription-required");
+    const $activeInput = $("#medicine-active");
 
     if (
         $nameInput.length === 0 ||
@@ -2423,401 +995,147 @@ async function saveMedicine() {
         $prescriptionInput.length === 0 ||
         $activeInput.length === 0
     ) {
-
-        console.error(
-            "Medicine form elements not found."
-        );
-
-        showToast(
-            "Medicine form fields not found.",
-            "danger"
-        );
+        console.error("Medicine form elements not found.");
+        showToast("Medicine form fields not found.", "danger");
 
         return;
     }
 
-
-    // ---------------------------------------------------------
-    // Read values
-    // ---------------------------------------------------------
-
-    const name =
-        ($nameInput.val() || "").trim();
-
-    const genericName =
-        ($genericInput.val() || "").trim();
-
-    const brandName =
-        ($brandInput.val() || "").trim();
-
-    const dosageForm =
-        ($dosageInput.val() || "").trim();
-
-    const strength =
-        ($strengthInput.val() || "").trim();
-
-    const categoryId =
-        ($categoryInput.val() || "").trim();
-
-    const description =
-        ($descriptionInput.val() || "").trim();
-
-
-    const prescriptionRequired =
-        $prescriptionInput.val() === "true";
-
-    const active =
-        $activeInput.val() === "true";
-
-
-    // ---------------------------------------------------------
-    // Validation
-    // ---------------------------------------------------------
+    const name = ($nameInput.val() || "").trim();
+    const genericName = ($genericInput.val() || "").trim();
+    const brandName = ($brandInput.val() || "").trim();
+    const dosageForm = ($dosageInput.val() || "").trim();
+    const strength = ($strengthInput.val() || "").trim();
+    const categoryId = ($categoryInput.val() || "").trim();
+    const description = ($descriptionInput.val() || "").trim();
+    const prescriptionRequired = $prescriptionInput.val() === "true";
+    const active = $activeInput.val() === "true";
 
     if (!name) {
-
-        showToast(
-            "Medicine name is required.",
-            "warning"
-        );
-
+        showToast("Medicine name is required.", "warning");
         $nameInput.focus();
-
         return;
     }
-
 
     if (!genericName) {
-
-        showToast(
-            "Generic name is required.",
-            "warning"
-        );
-
+        showToast("Generic name is required.", "warning");
         $genericInput.focus();
-
         return;
     }
-
 
     if (!brandName) {
-
-        showToast(
-            "Brand name is required.",
-            "warning"
-        );
-
+        showToast("Brand name is required.", "warning");
         $brandInput.focus();
-
         return;
     }
-
 
     if (!dosageForm) {
-
-        showToast(
-            "Dosage form is required.",
-            "warning"
-        );
-
+        showToast("Dosage form is required.", "warning");
         $dosageInput.focus();
-
         return;
     }
-
 
     if (!strength) {
-
-        showToast(
-            "Strength is required.",
-            "warning"
-        );
-
+        showToast("Strength is required.", "warning");
         $strengthInput.focus();
-
         return;
     }
-
 
     if (!categoryId) {
-
-        showToast(
-            "Please select a medicine category.",
-            "warning"
-        );
-
+        showToast("Please select a medicine category.", "warning");
         $categoryInput.focus();
-
         return;
     }
 
-
-    // ---------------------------------------------------------
-    // Detect CREATE / UPDATE
-    // ---------------------------------------------------------
-
-    const editId =
-        $idInput.length > 0
-            ? ($idInput.val() || "").trim()
-            : "";
-
-    const isEdit =
-        Boolean(editId);
-
-
-    // ---------------------------------------------------------
-    // Request payload
-    // ---------------------------------------------------------
+    const editId = $idInput.length > 0 ? ($idInput.val() || "").trim() : "";
+    const isEdit = Boolean(editId);
 
     const payload = {
-
         name: name,
-
         genericName: genericName,
-
         brandName: brandName,
-
         dosageForm: dosageForm,
-
         strength: strength,
-
         description: description,
-
         categoryId: Number(categoryId),
-
-        prescriptionRequired:
-        prescriptionRequired,
-
-        active:
-        active
+        prescriptionRequired: prescriptionRequired,
+        active: active
     };
 
+    console.log("Medicine Save Payload:", payload);
 
-    console.log(
-        "Medicine Save Payload:",
-        payload
+    const endpoint = isEdit ? `/v1/medicines/${editId}` : "/v1/medicines";
+    const method = isEdit ? "PUT" : "POST";
+
+    showToast(isEdit ? "Updating medicine..." : "Creating medicine...", "info"
     );
-
-
-    // ---------------------------------------------------------
-    // API endpoint + method
-    // ---------------------------------------------------------
-
-    const endpoint =
-        isEdit
-            ? `/v1/medicines/${editId}`
-            : "/v1/medicines";
-
-    const method =
-        isEdit
-            ? "PUT"
-            : "POST";
-
-
-    // ---------------------------------------------------------
-    // Loading message
-    // ---------------------------------------------------------
-
-    showToast(
-        isEdit
-            ? "Updating medicine..."
-            : "Creating medicine...",
-        "info"
-    );
-
-
-    // ---------------------------------------------------------
-    // Send request
-    // ---------------------------------------------------------
 
     try {
+        const response = await apiFetch(endpoint, method, payload);
+        console.log("Medicine Save API Response:", response);
 
-        const response =
-            await apiFetch(
-                endpoint,
-                method,
-                payload
-            );
-
-
-        console.log(
-            "Medicine Save API Response:",
-            response
-        );
-
-
-        // -----------------------------------------------------
-        // Check API response
-        // -----------------------------------------------------
-
-        if (
-            !response ||
-            !response.success
-        ) {
-
+        if (!response || !response.success) {
             showToast(
-                response?.message ||
-                (
-                    isEdit
-                        ? "Failed to update medicine."
-                        : "Failed to create medicine."
-                ),
-                "danger"
-            );
-
+                response?.message || (isEdit ? "Failed to update medicine." : "Failed to create medicine."), "danger");
             return;
         }
 
+        showToast(isEdit ? "Medicine updated successfully!": "Medicine created successfully!", "success");
+        closeModal("medicine-modal");
 
-        // -----------------------------------------------------
-        // Success message
-        // -----------------------------------------------------
-
-        showToast(
-            isEdit
-                ? "Medicine updated successfully!"
-                : "Medicine created successfully!",
-            "success"
-        );
-
-
-        // -----------------------------------------------------
-        // Close modal
-        // -----------------------------------------------------
-
-        closeModal(
-            "medicine-modal"
-        );
-
-
-        // -----------------------------------------------------
-        // Reload medicine table from backend
-        // -----------------------------------------------------
-
-        await loadWorkspaceTab(
-            "medicines"
-        );
-
+        await loadWorkspaceTab("medicines");
 
     } catch (error) {
+        console.error("Error saving medicine:", error);
 
-        console.error(
-            "Error saving medicine:",
-            error
-        );
-
-
-        showToast(
-            isEdit
-                ? "Error updating medicine."
-                : "Error creating medicine.",
-            "danger"
-        );
+        showToast(isEdit ? "Error updating medicine." : "Error creating medicine.", "danger");
     }
 }
-
-// ============================================================
-// MEDICINE - DELETE
-// ============================================================
 
 async function deleteMedicine(id) {
 
-    if (
-        !confirm(
-            `Are you sure you want to delete medicine #${id}?`
-        )
+    if (!confirm(`Are you sure you want to delete medicine #${id}?`)
     ) {
-
         return;
     }
-
-
-    showToast(
-        "Deleting medicine...",
-        "info"
+    showToast("Deleting medicine...", "info"
     );
 
-
     try {
+        const response = await apiFetch(`/v1/medicines/${id}`, "DELETE");
 
-        const response =
-            await apiFetch(
-                `/v1/medicines/${id}`,
-                "DELETE"
-            );
-
-
-        if (
-            !response ||
-            !response.success
+        if (!response || !response.success
         ) {
-
-            showToast(
-                response?.message ||
-                "Failed to delete medicine.",
-                "danger"
-            );
+            showToast(response?.message || "Failed to delete medicine.", "danger");
 
             return;
         }
 
+        showToast("Medicine deleted successfully!", "success");
 
-        showToast(
-            "Medicine deleted successfully!",
-            "success"
-        );
-
-
-        await loadWorkspaceTab(
-            "medicines"
-        );
-
+        await loadWorkspaceTab("medicines");
 
     } catch (error) {
+        console.error("Error deleting medicine:", error);
 
-        console.error(
-            "Error deleting medicine:",
-            error
-        );
-
-        showToast(
-            "Error deleting medicine.",
-            "danger"
-        );
+        showToast("Error deleting medicine.", "danger");
     }
 }
-// ============================================================
-// PHARMACY - GET ALL FROM BACKEND
-// ============================================================
+
+//Pharmacy
 
 async function loadDashboardPharmacies() {
 
     try {
-
-        const token =
-            localStorage.getItem("medifind_token");
-
+        const token = localStorage.getItem("medifind_token");
         const response = await $.ajax({
-
             url: "http://localhost:8080/v1/pharmacies",
-
             method: "GET",
-
-            headers: token
-                ? {
-                    "Authorization":
-                        "Bearer " + token
-                }
-                : {},
-
+            headers: token ? {"Authorization": "Bearer " + token} : {},
             dataType: "json"
-
         });
 
-        console.log(
-            "Dashboard Pharmacies API Response:",
-            response
-        );
+        console.log("Dashboard Pharmacies API Response:", response);
 
         if (
             !response ||
@@ -2834,20 +1152,16 @@ async function loadDashboardPharmacies() {
 
         }
 
-        let pharmacies =
-            response.body;
+        let pharmacies = response.body;
 
         if (!Array.isArray(pharmacies)) {
 
             if (
-                pharmacies &&
-                Array.isArray(
-                    pharmacies.content
+                pharmacies && Array.isArray(pharmacies.content
                 )
             ) {
 
-                pharmacies =
-                    pharmacies.content;
+                pharmacies = pharmacies.content;
 
             } else {
 
@@ -2856,24 +1170,15 @@ async function loadDashboardPharmacies() {
             }
 
         }
-
-        console.log(
-            "Pharmacies from Backend:",
-            pharmacies
-        );
+        console.log("Pharmacies from Backend:", pharmacies);
 
         return pharmacies;
 
     } catch (error) {
-
-        console.error(
-            "Error loading pharmacies:",
-            error
-        );
+        console.error("Error loading pharmacies:", error);
 
         if (
-            error.status === 401 ||
-            error.status === 403
+            error.status === 401 || error.status === 403
         ) {
 
             showToast(
@@ -2896,47 +1201,25 @@ async function loadDashboardPharmacies() {
 
 }
 
+function renderPharmacyTable(pharmacies = [], owners = []) {
 
-
-// ============================================================
-// RENDER PHARMACY TABLE
-// ============================================================
-
-function renderPharmacyTable(
-    pharmacies = [],
-    owners = []
-) {
-
-    const head =
-        $("#workspace-table-head");
-
-    const body =
-        $("#workspace-table-body");
-
-    const panelTitle =
-        $("#table-panel-title");
+    const head = $("#workspace-table-head");
+    const body = $("#workspace-table-body");
+    const panelTitle = $("#table-panel-title");
 
     if (
-        head.length === 0 ||
-        body.length === 0
+        head.length === 0 || body.length === 0
     ) {
 
-        console.error(
-            "Pharmacy table elements not found."
-        );
+        console.error("Pharmacy table elements not found.");
 
         return;
 
     }
-
-    panelTitle.text(
-        "Registered Pharmacy Entities"
-    );
+    panelTitle.text("Registered Pharmacy Entities");
 
     head.html(`
-
         <tr>
-
             <th>ID</th>
             <th>Corporate Name</th>
             <th>Reg Code</th>
@@ -2945,37 +1228,26 @@ function renderPharmacyTable(
             <th>Address</th>
             <th>City</th>
             <th>Owner</th>
-
+            <th style="width: 170px; text-align: right;">Actions</th>
         </tr>
-
     `);
 
     body.empty();
 
     if (
-        !Array.isArray(pharmacies) ||
-        pharmacies.length === 0
+        !Array.isArray(pharmacies) || pharmacies.length === 0
     ) {
-
         body.html(`
-
             <tr>
-
                 <td
-                    colspan="8"
+                    colspan="9"
                     style="
                         text-align:center;
                         padding:2.5rem;
-                        color:var(--text-muted);
-                    "
-                >
-
+                        color:var(--text-muted);">
                     No pharmacies found.
-
                 </td>
-
             </tr>
-
         `);
 
         return;
@@ -2985,197 +1257,91 @@ function renderPharmacyTable(
     pharmacies.forEach(
         function (pharmacy) {
 
-            const owner =
-                owners.find(
+            const owner = owners.find(
                     function (user) {
-
-                        return String(
-                            user.id
-                        ) === String(
-                            pharmacy.ownerId
-                        );
-
+                        return String(user.id) === String(pharmacy.ownerId);
                     }
                 );
 
-            const ownerText =
-                owner
-                    ? `${owner.name} (${owner.email})`
+            const ownerText = owner
+                    ? `${escapeHtml(owner.name)} (${escapeHtml(owner.email)})`
                     : "Unassigned";
 
             const row = `
-
                 <tr>
-
+                    <td>#${pharmacy.id ?? "-"}</td>
                     <td>
-                        ${pharmacy.id ?? "-"}
+                        <strong>${escapeHtml(pharmacy.name ?? "-")}</strong>
                     </td>
-
+                    <td>${escapeHtml(pharmacy.registrationNumber ?? "-")}</td>
+                    <td>${escapeHtml(pharmacy.phone ?? "-")}</td>
+                    <td>${escapeHtml(pharmacy.email ?? "-")}</td>
+                    <td>${escapeHtml(pharmacy.address ?? "-")}</td>
+                    <td>${escapeHtml(pharmacy.city ?? "-")}</td>
                     <td>
-
-                        <strong>
-                            ${pharmacy.name ?? "-"}
-                        </strong>
-
+                        <span class="badge badge-info">${ownerText}</span>
                     </td>
-
-                    <td>
-                        ${
-                pharmacy.registrationNumber
-                ?? "-"
-            }
+                    <td style="text-align: right;">
+                        <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; margin-right: 6px;" onclick="editPharmacy(${pharmacy.id})">Edit</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.3);" onclick="deletePharmacy(${pharmacy.id})">Delete</button>
                     </td>
-
-                    <td>
-                        ${pharmacy.phone ?? "-"}
-                    </td>
-
-                    <td>
-                        ${pharmacy.email ?? "-"}
-                    </td>
-
-                    <td>
-                        ${pharmacy.address ?? "-"}
-                    </td>
-
-                    <td>
-                        ${pharmacy.city ?? "-"}
-                    </td>
-
-                    <td>
-
-                        <span class="badge badge-info">
-
-                            ${ownerText}
-
-                        </span>
-
-                    </td>
-
                 </tr>
-
             `;
-
             body.append(row);
-
         }
     );
-
 }
 
-
-
-// ============================================================
-// PHARMACY STATISTICS
-// ============================================================
-
 function renderPharmacyStats(
-    pharmacies = []
-) {
-
-    const statsContainer =
-        $("#workspace-stats");
+    pharmacies = []) {
+    const statsContainer = $("#workspace-stats");
 
     if (
         statsContainer.length === 0
     ) {
-
         return;
-
     }
 
-    const total =
-        Array.isArray(pharmacies)
+    const total = Array.isArray(pharmacies)
             ? pharmacies.length
             : 0;
 
     statsContainer.html(`
 
         <div class="glass-card stat-card animate-fade">
-
             <div class="stat-header">
-
                 <span class="stat-title">
-
                     Total Pharmacies
-
                 </span>
-
-                <div class="stat-icon">
-
-                    PH
-
-                </div>
-
+                <div class="stat-icon">PH</div>
             </div>
-
-            <div class="stat-val">
-
-                ${total}
-
-            </div>
-
+            <div class="stat-val">${total}</div>
             <span class="stat-desc">
-
                 Pharmacy organizations
                 loaded from database
-
             </span>
-
         </div>
-
     `);
-
 }
-
-
-
-// ============================================================
-// PHARMACY OWNERS - GET FROM BACKEND
-// ============================================================
 
 async function loadPharmacyOwners() {
 
     try {
 
-        const token =
-            localStorage.getItem(
-                "medifind_token"
-            );
+        const token = localStorage.getItem("medifind_token");
 
-        // ----------------------------------------------------
-        // GET USERS
-        // ----------------------------------------------------
+        const usersResponse = await $.ajax({
 
-        const usersResponse =
-            await $.ajax({
-
-                url:
-                    "http://localhost:8080/v1/users",
-
-                method:
-                    "GET",
-
-                headers: token
-                    ? {
-                        "Authorization":
-                            "Bearer " + token
-                    }
-                    : {},
-
-                dataType:
-                    "json"
-
+                url: "http://localhost:8080/v1/users",
+                method: "GET",
+                headers: token ? {"Authorization": "Bearer " + token} : {},
+                dataType: "json"
             });
 
-        console.log(
-            "Pharmacy Users API Response:",
-            usersResponse
-        );
+        console.log("Pharmacy Users API Response:", usersResponse);
 
         if (
-            !usersResponse ||
-            usersResponse.status !== 0
+            !usersResponse || usersResponse.status !== 0
         ) {
 
             showToast(
@@ -3194,14 +1360,11 @@ async function loadPharmacyOwners() {
         if (!Array.isArray(users)) {
 
             if (
-                users &&
-                Array.isArray(
-                    users.content
+                users && Array.isArray(users.content
                 )
             ) {
 
-                users =
-                    users.content;
+                users = users.content;
 
             } else {
 
@@ -3211,35 +1374,15 @@ async function loadPharmacyOwners() {
 
         }
 
-        // ----------------------------------------------------
-        // GET ROLES
-        // ----------------------------------------------------
 
-        const rolesResponse =
-            await $.ajax({
-
-                url:
-                    "http://localhost:8080/v1/roles",
-
-                method:
-                    "GET",
-
-                headers: token
-                    ? {
-                        "Authorization":
-                            "Bearer " + token
-                    }
-                    : {},
-
-                dataType:
-                    "json"
-
+        const rolesResponse = await $.ajax({
+                url: "http://localhost:8080/v1/roles",
+                method: "GET",
+                headers: token ? {"Authorization": "Bearer " + token} : {},
+                dataType: "json"
             });
 
-        console.log(
-            "Roles API Response:",
-            rolesResponse
-        );
+        console.log("Roles API Response:", rolesResponse);
 
         if (
             !rolesResponse ||
@@ -3268,8 +1411,7 @@ async function loadPharmacyOwners() {
                 )
             ) {
 
-                roles =
-                    roles.content;
+                roles = roles.content;
 
             } else {
 
@@ -3279,33 +1421,18 @@ async function loadPharmacyOwners() {
 
         }
 
-        // ----------------------------------------------------
-        // FIND PHARMACY_ADMIN ROLE
-        // ----------------------------------------------------
-
         const pharmacyAdminRole =
             roles.find(
                 function (role) {
 
-                    const roleName =
-                        role.roleName ||
-                        role.name ||
-                        "";
-
-                    return String(
-                            roleName
-                        ).toUpperCase() ===
-                        "PHARMACY_ADMIN";
-
+                    const roleName = role.roleName || role.name || "";
+                    return String(roleName).toUpperCase() === "PHARMACY_ADMIN";
                 }
             );
 
         if (!pharmacyAdminRole) {
 
-            console.error(
-                "PHARMACY_ADMIN role not found.",
-                roles
-            );
+            console.error("PHARMACY_ADMIN role not found.", roles);
 
             showToast(
                 "PHARMACY_ADMIN role was not found.",
@@ -3316,25 +1443,12 @@ async function loadPharmacyOwners() {
 
         }
 
-        console.log(
-            "PHARMACY_ADMIN Role:",
-            pharmacyAdminRole
-        );
+        console.log("PHARMACY_ADMIN Role:", pharmacyAdminRole);
 
-        // ----------------------------------------------------
-        // FILTER USERS BY ROLE ID
-        // ----------------------------------------------------
-
-        const owners =
-            users.filter(
+        const owners = users.filter(
                 function (user) {
 
-                    return String(
-                        user.roleId
-                    ) === String(
-                        pharmacyAdminRole.id
-                    );
-
+                    return String(user.roleId) === String(pharmacyAdminRole.id);
                 }
             );
 
@@ -3378,97 +1492,41 @@ async function loadPharmacyOwners() {
 }
 
 
-
-// ============================================================
-// OPEN PHARMACY MODAL
-// ============================================================
-
 async function openPharmacyModal() {
 
-    // --------------------------------------------------------
-    // RESET FORM
-    // --------------------------------------------------------
-
     $("#pharmacy-edit-id").val("");
-
     $("#pharmacy-name").val("");
-
     $("#pharmacy-reg").val("");
-
     $("#pharmacy-phone").val("");
-
     $("#pharmacy-email").val("");
-
     $("#pharmacy-address").val("");
-
     $("#pharmacy-city").val("");
 
-    // --------------------------------------------------------
-    // OWNER DROPDOWN
-    // --------------------------------------------------------
 
-    const ownerDrop =
-        $("#pharmacy-owner");
+    const ownerDrop = $("#pharmacy-owner");
 
     if (
         ownerDrop.length === 0
     ) {
 
-        console.error(
-            "pharmacy-owner element not found."
-        );
+        console.error("pharmacy-owner element not found.");
 
         return;
 
     }
 
     ownerDrop.html(`
+        <option value="">Loading pharmacy owners...</option>
+`);
 
-        <option value="">
+    $("#pharmacy-modal-title").text("Register Pharmacy");
 
-            Loading pharmacy owners...
+    openModal("pharmacy-modal");
 
-        </option>
-
-    `);
-
-    // --------------------------------------------------------
-    // MODAL TITLE
-    // --------------------------------------------------------
-
-    $("#pharmacy-modal-title")
-        .text(
-            "Register Pharmacy"
-        );
-
-    // --------------------------------------------------------
-    // OPEN MODAL
-    // --------------------------------------------------------
-
-    openModal(
-        "pharmacy-modal"
-    );
-
-    // --------------------------------------------------------
-    // LOAD OWNERS
-    // --------------------------------------------------------
-
-    const owners =
-        await loadPharmacyOwners();
-
+    const owners = await loadPharmacyOwners();
     ownerDrop.html(`
-
-        <option value="">
-
-            Select Pharmacy Owner
-
-        </option>
-
+        <option value="">Select Pharmacy Owner</option>
     `);
-
-    // --------------------------------------------------------
-    // NO OWNERS
-    // --------------------------------------------------------
 
     if (
         owners.length === 0
@@ -3487,11 +1545,6 @@ async function openPharmacyModal() {
         return;
 
     }
-
-    // --------------------------------------------------------
-    // POPULATE OWNERS
-    // --------------------------------------------------------
-
     owners.forEach(
         function (owner) {
 
@@ -3505,67 +1558,22 @@ async function openPharmacyModal() {
                     (${owner.email})
 
                 </option>
-
             `);
-
         }
     );
-
 }
-
-
-
-// ============================================================
-// SAVE PHARMACY - CREATE / UPDATE
-// ============================================================
 
 async function savePharmacy() {
 
-    // --------------------------------------------------------
-    // READ INPUTS
-    // --------------------------------------------------------
+    const name = $.trim($("#pharmacy-name").val());
+    const registrationNumber = $.trim($("#pharmacy-reg").val());
+    const phone = $.trim($("#pharmacy-phone").val());
+    const email = $.trim($("#pharmacy-email").val());
+    const address = $.trim($("#pharmacy-address").val());
+    const city = $.trim($("#pharmacy-city").val());
+    const ownerValue = $("#pharmacy-owner").val();
+    const editId = $.trim($("#pharmacy-edit-id").val());
 
-    const name =
-        $.trim(
-            $("#pharmacy-name").val()
-        );
-
-    const registrationNumber =
-        $.trim(
-            $("#pharmacy-reg").val()
-        );
-
-    const phone =
-        $.trim(
-            $("#pharmacy-phone").val()
-        );
-
-    const email =
-        $.trim(
-            $("#pharmacy-email").val()
-        );
-
-    const address =
-        $.trim(
-            $("#pharmacy-address").val()
-        );
-
-    const city =
-        $.trim(
-            $("#pharmacy-city").val()
-        );
-
-    const ownerValue =
-        $("#pharmacy-owner").val();
-
-    const editId =
-        $.trim(
-            $("#pharmacy-edit-id").val()
-        );
-
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
 
     if (!name) {
 
@@ -9467,18 +7475,6 @@ function switchRole(role) {
 }
 
 
-// ============================================================
-// INITIALIZATION ON PAGE LOAD
-// ============================================================
-
-// document.addEventListener("DOMContentLoaded", function () {
-//     console.log("MediFind Management Console initialized.");
-//     // Default to ADMIN view which loads medicine categories
-//     switchRole("ADMIN");
-// });
-
-
-
 // Authentication
 window.handleDashboardLogin = handleDashboardLogin;
 
@@ -9537,3 +7533,64 @@ window.deleteNotification = deleteNotification;
 // Sidebar & role switching
 window.selectSidebarTab = selectSidebarTab;
 window.switchRole = switchRole;
+
+// ============================================================
+// AUTO INITIALIZATION ON PAGE LOAD
+// ============================================================
+
+$(document).ready(async function () {
+    console.log("Dashboard initialized. Checking session/credentials...");
+
+    const savedSession = localStorage.getItem("medifind_session");
+    const token = localStorage.getItem("medifind_token");
+
+    if (savedSession && token) {
+        try {
+            const user = JSON.parse(savedSession);
+            const role = (user.role || "").toUpperCase();
+            if (role === "ADMIN" || role === "PHARMACY_ADMIN" || role === "PHARMACY_STAFF") {
+                sessionUser = user;
+                dashboardRole = role;
+                $("#dashboard-login-screen").hide();
+                switchRole(role);
+                return;
+            }
+        } catch (e) {
+            console.error("Error loading existing session:", e);
+        }
+    }
+
+    // Direct access to admin panel: auto-login with default admin credentials
+    try {
+        const response = await $.ajax({
+            url: API_BASE_URL + "/v1/auth/login",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+                email: "admin@medifind.com",
+                password: "password123"
+            }),
+            dataType: "json"
+        });
+
+        const loginData = response?.body;
+        if (loginData && loginData.token) {
+            localStorage.setItem("medifind_token", loginData.token);
+            const role = (loginData.role || "ADMIN").toUpperCase();
+            const user = {
+                id: loginData.userId,
+                name: loginData.name,
+                email: loginData.email,
+                role: role
+            };
+            localStorage.setItem("medifind_session", JSON.stringify(user));
+            sessionUser = user;
+            dashboardRole = role;
+            $("#dashboard-login-screen").hide();
+            switchRole(role);
+            showToast(`Welcome to Admin Panel, ${user.name || user.email}!`, "success");
+        }
+    } catch (error) {
+        console.warn("Direct admin auto-login failed; showing login screen:", error);
+    }
+});

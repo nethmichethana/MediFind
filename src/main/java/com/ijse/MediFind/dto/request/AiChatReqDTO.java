@@ -1,11 +1,17 @@
-/**
- * Created by Nipuna
- * Date : 8/13/2026
- * Time : 6:12 PM
- * Project Name : MediFind
- */
-
 package com.ijse.MediFind.dto.request;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class AiChatReqDTO {
+    private String message;
 }
+

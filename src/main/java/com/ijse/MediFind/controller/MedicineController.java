@@ -60,6 +60,21 @@ public class MedicineController {
         );
     }
 
+    @GetMapping("/medicines/filter")
+    public CommonResponse filterMedicines(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String search) {
+
+        List<MedicineResDTO> medicineList =
+                medicineService.filterMedicines(categoryId, search);
+
+        return new CommonResponse(
+                OPERATION_SUCCESS,
+                medicineList,
+                SUCCESS_MESSAGE
+        );
+    }
+
     @PutMapping("/medicines/{id}")
     public CommonResponse updateMedicine(
             @PathVariable Long id,
